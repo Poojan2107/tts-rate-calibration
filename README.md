@@ -68,6 +68,8 @@ Final Average: 2.73 words/second
 - **Calibrated Speed:** `2.73 words/second` (~164 WPM)
 - **Target Duration Formula:** `expected_seconds = word_count / 2.73`
 
+> **Critical Dependency:** The `2.73 WPS` baseline is strictly coupled to `en-US-JennyNeural` at `rate: +0%`. If you change the narration voice or default rate parameter, you must re-run `python calibrate_rate.py` to calculate a new baseline before using the duration gates.
+
 ### 2. Validation & Quality Gates
 Every generated MP3 is inspected with `mutagen` for real duration before being accepted into the deck:
 - **Tolerance Window:** `±15%` of `expected_seconds` (with a `±1.5s` floor for short sentences under 15 words).
