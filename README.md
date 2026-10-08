@@ -51,6 +51,9 @@ Final Average: 2.73 words/second
 
 **Voice:** `en-US-JennyNeural`
 
+### Failed / Excluded Passages
+All 8 passages ran, none excluded.
+
 ## Pipeline Spec
 
 ## Threeslide Run Log
