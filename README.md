@@ -77,6 +77,15 @@ Every generated MP3 is inspected with `mutagen` for real duration before being a
 - **Fail (Too Short):** `< 0.85 * expected` (flags network cutoff or early stream termination).
 - **Fail (Too Long):** `> 1.15 * expected` (flags pacing stall or edge-tts pronunciation loop).
 
+#### Worked Example (55-Word Slide):
+1. **Word Count:** `55 words`
+2. **Expected Duration:** `55 / 2.73 = 20.15 seconds`
+3. **Acceptable Duration Range (±15%):**
+   - **Min Allowed (-15%):** `20.15 * 0.85 = 17.13 seconds`
+   - **Max Allowed (+15%):** `20.15 * 1.15 = 23.17 seconds`
+   - **Gate Decision:** Any audio between **`17.13s` and `23.17s`** passes. Audio `< 17.13s` triggers cutoff recovery; audio `> 23.17s` triggers stall recovery.
+
+
 ### 3. Retry & Isolation Protocol
 - **Max Retries:** 3 attempts per passage on network or gate failure.
 - **Non-blocking Loop:** Individual passage failures do not abort the batch; remaining slides continue processing.
