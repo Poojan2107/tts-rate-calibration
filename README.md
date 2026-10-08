@@ -35,6 +35,7 @@ python calibrate_rate.py
 
 ```text
 Calibrating speech rate using voice: en-US-JennyNeural
+Loaded 8 passages from 'edge-tts Speaking-Rate Calibration Passages.csv'
 
 p01:  25 words |   9.00 seconds | 2.78 words/second
 p02:  59 words |  20.57 seconds | 2.87 words/second
@@ -44,7 +45,10 @@ p05:  31 words |  12.94 seconds | 2.40 words/second
 p06:  71 words |  26.45 seconds | 2.68 words/second
 p07:  47 words |  17.59 seconds | 2.67 words/second
 p08:  89 words |  30.48 seconds | 2.92 words/second
--------------------------------------------------------
+-----------------------------------------------------------------
+Passages Attempted: 8 | Succeeded: 8 | Failed/Excluded: 0
+Excluded Passages: None (all attempted passages succeeded)
+Included IDs: p01, p02, p03, p04, p05, p06, p07, p08
 Total Words: 424 | Total Duration: 155.21s
 Final Average: 2.73 words/second
 ```
@@ -52,7 +56,8 @@ Final Average: 2.73 words/second
 **Voice:** `en-US-JennyNeural`
 
 ### Failed / Excluded Passages
-All 8 passages ran, none excluded.
+- **Status:** All 8 passages ran, none excluded.
+- **Coverage Details:** 8/8 passages succeeded (`p01`, `p02`, `p03`, `p04`, `p05`, `p06`, `p07`, `p08`). No passages encountered synthesis or metadata errors.
 
 ## Pipeline Spec
 
