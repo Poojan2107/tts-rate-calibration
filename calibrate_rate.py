@@ -5,18 +5,19 @@ import edge_tts
 from mutagen.mp3 import MP3
 
 VOICE = "en-US-JennyNeural"
+RATE = "+0%"
 CSV_FILE = "edge-tts Speaking-Rate Calibration Passages.csv"
 OUTPUT_DIR = "calibration_audio"
 
 
-async def generate_and_measure(passage_id: str, text: str, voice: str = VOICE):
+async def generate_and_measure(passage_id: str, text: str, voice: str = VOICE, rate: str = RATE):
     """Generate audio for a single passage and measure real duration.
     Catches errors gracefully to ensure a single failure does not abort the run."""
     try:
         os.makedirs(OUTPUT_DIR, exist_ok=True)
         audio_path = os.path.join(OUTPUT_DIR, f"{passage_id}.mp3")
 
-        communicate = edge_tts.Communicate(text, voice=voice)
+        communicate = edge_tts.Communicate(text, voice=voice, rate=rate)
         await communicate.save(audio_path)
 
         if not os.path.exists(audio_path) or os.path.getsize(audio_path) == 0:
@@ -66,14 +67,14 @@ async def main():
         for row in reader:
             passages.append((row["Passage ID"], row["Passage Text"]))
 
-    print(f"Calibrating speech rate using voice: {VOICE}")
+    print(f"Calibrating speech rate using voice: {VOICE} (rate: {RATE})")
     print(f"Loaded {len(passages)} passages from '{CSV_FILE}'\n")
 
     successful_results = []
     failed_results = []
 
     for passage_id, text in passages:
-        result = await generate_and_measure(passage_id, text, voice=VOICE)
+        result = await generate_and_measure(passage_id, text, voice=VOICE, rate=RATE)
         if result["success"]:
             successful_results.append(result)
             print(f"{result['id']}: {result['words']:3d} words | {result['seconds']:6.2f} seconds | {result['wps']:.2f} words/second")

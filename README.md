@@ -34,7 +34,7 @@ python calibrate_rate.py
 ## Calibration
 
 ```text
-Calibrating speech rate using voice: en-US-JennyNeural
+Calibrating speech rate using voice: en-US-JennyNeural (rate: +0%)
 Loaded 8 passages from 'edge-tts Speaking-Rate Calibration Passages.csv'
 
 p01:  25 words |   9.00 seconds | 2.78 words/second
@@ -53,7 +53,8 @@ Total Words: 424 | Total Duration: 155.21s
 Final Average: 2.73 words/second
 ```
 
-**Voice:** `en-US-JennyNeural`
+- **Voice:** `en-US-JennyNeural`
+- **Rate Setting:** `+0%` (default natural speed)
 
 ### Failed / Excluded Passages
 - **Status:** All 8 passages ran, none excluded.
