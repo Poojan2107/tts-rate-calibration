@@ -32,12 +32,20 @@ Return only the script text, with nothing before or after it.
 
 ## 3. Retry order and limit
 
-A retry is triggered whenever `abs(gap) > 3.0` seconds. Fixes are applied in strict cost order:
+### Error Types That Trigger a Retry
+Each recoverable failure type is explicitly identified and spends from the retry budget:
 
-| Step | Action | Detail |
-|---|---|---|
-| **1. Rate Nudge** | Edge-TTS rate adjustment | Keep the exact same script text. Nudge the Edge-TTS rate by 10 points. If `gap > +3.0s`, speed up (`+10%`). If `gap < -3.0s`, slow down (`-10%`). The rate parameter cannot shift more than `±20%` from `+0%` (maximum 2 rate nudge attempts). |
-| **2. Model Rewrite** | LLM text refactoring | If the audio still misses after 2 rate nudges, reset rate to `+0%` and prompt the model to rewrite the text with an adjusted target: `new_target_words = current_words - round(gap × 2.73)`. Maximum 2 rewrite attempts. |
+1. **Timing Miss (`abs(gap) > 3.0s`):**
+   - **Step 1 (Edge-TTS Rate Nudge):** Keep exact same script. Shift rate by 10 points (`+10%` if gap > +3.0s, `-10%` if gap < -3.0s). Bounded to `±20%` from `+0%` (max 2 attempts).
+   - **Step 2 (Model Rewrite):** If rate nudges miss, reset rate to `+0%` and prompt model with new target: `new_target_words = current_words - round(gap × 2.73)` (max 2 attempts).
+2. **Network / Socket Timeout (`TimeoutError`, `aiohttp.ServerDisconnectedError`):**
+   - Immediate re-fetch attempt using identical script and rate setting.
+3. **Empty Output (`file_size == 0`):**
+   - Audio file creation failed; triggers an immediate re-fetch attempt.
+4. **Corrupted Audio Header (`duration <= 0.0s`):**
+   - Mutagen cannot parse header or returns invalid duration; deletes corrupt file and triggers re-fetch attempt.
+
+*Note on Fatal Errors:* Non-recoverable errors (e.g. missing slide image file, missing API key) do not retry and terminate the run immediately with an error log.
 
 ### Rewrite Prompt (verbatim):
 ```
@@ -48,18 +56,17 @@ Return only the script text.
 Script: {script}
 ```
 
-### Hard Retry Limit & Failure State:
-- **Total Limit:** Maximum 4 retries after initial attempt (up to 2 rate nudges, then up to 2 model rewrites).
-- **Failure Handling:** If all 4 retries are exhausted without a timing pass, mark the run as **FAILED**.
-- **User Notice:** Display: `"Couldn't fit this narration within 3 seconds of {target} seconds. Last attempt: {measured} seconds."`
-- **Asset Retention:** Keep the last attempt's script and MP3 in the run log for user review, but quarantine from final export.
+### Hard Retry Limit:
+- **Maximum Retry Count:** **4 retries total** per slide across all recoverable error types.
+- **Failure State (Limit Reached):** Mark run **FAILED**. Display message: `"Couldn't fit this narration within 3 seconds of {target} seconds. Last attempt: {measured} seconds."`
+- **Asset Handling:** Keep last attempt in the run log for debugging; hide download button.
 
 ## 4. Pass and fail rules
 
 | Rule | Specification |
 |---|---|
-| **Timing Pass** | `-3.0s <= gap <= +3.0s` (inclusive). |
-| **Measurement Standard** | Real duration measured using `mutagen.mp3.MP3(path).info.length`, rounded to 0.1s. Word count estimations are never used for verdicts. |
+| **Timing Pass** | `abs(gap) <= 3.0 seconds` (i.e. `-3.0s <= gap <= +3.0s` inclusive). |
+| **Measurement Standard** | Real duration measured using `mutagen.mp3.MP3(path).info.length`, rounded to 0.1s. Word count estimations are never used for pass/fail decisions. |
 | **Coverage Pass** | The generated script accurately states the slide's `key_visual_point` (matching direction, trend, and numeric facts). |
 | **Coverage Evaluation** | Evaluated post-run against `key_visual_point`. This truth value is never leaked to the vision prompt. |
 | **Audit Logging** | All attempts and verdicts are permanently logged to the results table (`slide_id`, `target_length_seconds`, `measured_seconds`, `gap_seconds`, `retries_used`, `timing_verdict`, `coverage_verdict`). |
@@ -71,4 +78,4 @@ Script: {script}
 | **Timing Pass** | The **Download** button appears for the passed MP3, displaying the measured length and target length side by side. |
 | **In-Progress / Pre-Pass** | The audio player is enabled so the user can listen to intermediate attempts, but the **Download** button is hidden. |
 | **Final Failure (Limit Reached)** | The **Download** button never appears. The failure warning message is displayed. |
-| **Coverage Failure with Timing Pass** | If the audio passes timing (`gap <= ±3.0s`) but fails coverage grading, the **Download** button still appears, and the results table logs `coverage_verdict = FAIL`. |
+| **Coverage Failure with Timing Pass** | If the audio passes timing (`abs(gap) <= 3.0s`) but fails coverage grading, the **Download** button still appears, and the results table logs `coverage_verdict = FAIL`. |

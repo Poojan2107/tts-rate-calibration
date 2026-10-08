@@ -62,40 +62,34 @@ Final Average: 2.73 words/second
 
 ## Pipeline Spec
 
+*Full canonical specification available at [docs/narration-pipeline-spec.md](docs/narration-pipeline-spec.md).*
+
 ### 1. Baseline Configuration
 - **Voice:** `en-US-JennyNeural`
 - **Default Rate:** `+0%`
 - **Calibrated Speed:** `2.73 words/second` (~164 WPM)
-- **Target Duration Formula:** `expected_seconds = word_count / 2.73`
+- **Target Words Formula:** `target_words = round(target_seconds × 2.73)` (exact halves round up)
+- **Gap Definition:** `gap = mutagen_measured_seconds - target_seconds`
 
-> **Critical Dependency:** The `2.73 WPS` baseline is strictly coupled to `en-US-JennyNeural` at `rate: +0%`. If you change the narration voice or default rate parameter, you must re-run `python calibrate_rate.py` to calculate a new baseline before using the duration gates.
+### 2. Validation & Quality Gate
+Every generated MP3 is inspected with `mutagen` for real duration:
+- **Timing Pass Condition:** `abs(gap) <= 3.0 seconds` (i.e. `-3.0s <= gap <= +3.0s` inclusive).
+- **Measurement Standard:** `mutagen.mp3.MP3(path).info.length` rounded to 0.1s. Word count estimates are never used.
 
-### 2. Validation & Quality Gates
-Every generated MP3 is inspected with `mutagen` for real duration before being accepted into the deck:
-- **Tolerance Window:** `±15%` of `expected_seconds` (with a `±1.5s` floor for short sentences under 15 words).
-- **Pass Condition:** `0.85 * expected <= actual_seconds <= 1.15 * expected`
-- **Fail (Too Short):** `< 0.85 * expected` (flags network cutoff or early stream termination).
-- **Fail (Too Long):** `> 1.15 * expected` (flags pacing stall or edge-tts pronunciation loop).
+#### Worked Example (30s Target):
+1. **Target Seconds:** `30.0s`
+2. **Target Words:** `round(30 × 2.73) = 82 words`
+3. **Acceptable Duration Range:** `27.0s` to `33.0s` (`abs(gap) <= 3.0s`).
 
-#### Worked Example (55-Word Slide):
-1. **Word Count:** `55 words`
-2. **Expected Duration:** `55 / 2.73 = 20.15 seconds`
-3. **Acceptable Duration Range (±15%):**
-   - **Min Allowed (-15%):** `20.15 * 0.85 = 17.13 seconds`
-   - **Max Allowed (+15%):** `20.15 * 1.15 = 23.17 seconds`
-   - **Gate Decision:** Any audio between **`17.13s` and `23.17s`** passes. Audio `< 17.13s` triggers cutoff recovery; audio `> 23.17s` triggers stall recovery.
+### 3. Retry Order & Limit
+- **Recoverable Error Types:** Timing miss (`abs(gap) > 3.0s`), network timeouts, zero-byte outputs, and corrupt audio headers.
+- **Order on Timing Miss:** Edge-TTS rate nudge (`±10%`, max 2x) → Model rewrite with adjusted target words (max 2x).
+- **Hard Limit:** **4 retries maximum** per slide.
+- **On Failure:** Display `"Couldn't fit this narration within 3 seconds of {target} seconds. Last attempt: {measured} seconds."` Hide download button.
 
-
-### 3. Retry & Isolation Protocol
-- **Max Retries:** 3 attempts per passage on network or gate failure.
-- **Non-blocking Loop:** Individual passage failures do not abort the batch; remaining slides continue processing.
-- **Quarantine:** Unusable or gate-failing MP3s are quarantined and excluded from final assembly.
-
-### 4. Failure Escalation Hierarchy
-When an audio track consistently fails the duration gate, apply fixes in order of cost:
-1. **Rate Nudge (Cheapest):** Apply a `±5%` to `±10%` rate parameter override on that passage without altering slide content.
-2. **Text Refactor:** Rewrite awkward numbers, spell out acronyms phonetically, or adjust punctuation pauses.
-3. **Loud Flagging:** Mark batch status as `COMPLETED WITH WARNINGS`, log exact expected vs actual duration deltas, and surface the affected slide for manual review.
+### 4. Download Rule
+- **Timing Pass:** Download button appears showing measured vs target duration.
+- **In-Progress / Failure:** Download button remains hidden.
 
 ## Threeslide Run Log
 
