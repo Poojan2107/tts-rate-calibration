@@ -41,13 +41,19 @@ Script: {script}"""
 
 
 def check_configuration():
-    """Validate environment configuration per Section 1 of the spec."""
+    """Enforce strict configuration per Section 1 of the pipeline spec.
+    A missing key or model halts execution immediately. Unauthenticated runs
+    are strictly prohibited from generating output or writing to the run log."""
+    if not OPENROUTER_API_KEY:
+        print("[CONFIGURATION ERROR] OPENROUTER_API_KEY is not set.")
+        print("Runs without a valid API key are prohibited from writing to the run log.")
+        print("Please set OPENROUTER_API_KEY in your local .env file.")
+        sys.exit(1)
+
     if not OPENROUTER_MODEL:
-        raise ValueError(
-            "Configuration Error: OPENROUTER_MODEL is not set in the environment. "
-            "Per Section 1 of the pipeline spec, the model ID must be read dynamically from "
-            "OPENROUTER_MODEL in the local environment and is never hardcoded."
-        )
+        print("[CONFIGURATION ERROR] OPENROUTER_MODEL is not set.")
+        print("Per Section 1 of the spec, the model ID must be read dynamically from OPENROUTER_MODEL in .env.")
+        sys.exit(1)
 
 
 def encode_image_base64(image_path: str) -> str:
@@ -57,13 +63,8 @@ def encode_image_base64(image_path: str) -> str:
         return base64.b64encode(image_file.read()).decode("utf-8")
 
 
-def call_openrouter(messages: list, slide_id: str, is_standin: bool = False) -> str:
-    """Send request to OpenRouter vision API or execute clearly-labeled stand-in if specified."""
-    if is_standin or not OPENROUTER_API_KEY:
-        print(f"[{slide_id}] [SOURCE: STAND-IN SCRIPT GENERATOR - No active OPENROUTER_API_KEY]")
-        # Transparent stand-in that generates text based on target word count
-        return generate_labeled_standin_script(slide_id)
-
+def call_openrouter(messages: list) -> str:
+    """Send live multimodal request to OpenRouter API."""
     headers = {
         "Authorization": f"Bearer {OPENROUTER_API_KEY}",
         "Content-Type": "application/json",
@@ -90,35 +91,9 @@ def call_openrouter(messages: list, slide_id: str, is_standin: bool = False) -> 
         return res_data["choices"][0]["message"]["content"].strip()
 
 
-def generate_labeled_standin_script(slide_id: str) -> str:
-    """Stand-in generator clearly tagged when running in offline mode."""
-    if slide_id == "slide-01":
-        return (
-            "[STAND-IN] Monthly template marketplace sales held remarkably steady near forty thousand dollars from October through January, "
-            "and then experienced an extraordinary jump to eighty-two thousand dollars in February. This dramatic acceleration "
-            "highlights expanding momentum across all regional markets, largely fueled by a powerful wave of Canva Pro tier "
-            "upgrades that sparked the sudden midseason surge. Meanwhile, our core engineering team expanded to twelve full-time members, "
-            "positioning the organization perfectly to sustain this upward sales velocity throughout the remainder of the year."
-        )
-    elif slide_id == "slide-02":
-        return (
-            "[STAND-IN] The February signup breakdown shows the mobile app leading at fifty-five percent, followed by desktop web at "
-            "thirty percent and referral links at fifteen percent. Mobile signups have now overtaken desktop as our primary "
-            "acquisition channel, while customer referrals doubled year on year to support steady overall growth."
-        )
-    elif slide_id == "slide-03":
-        return (
-            "[STAND-IN] Four designers collaborate seamlessly around a wall screen, each moving their colored cursor on the same poster "
-            "draft simultaneously. Live cursors keep every collaborator in sync, while inline comments let teams share feedback "
-            "without ever leaving the canvas."
-        )
-    return "[STAND-IN] Presentation slide summarizing core operational metrics."
-
-
 async def generate_speech_audio(text: str, output_path: str, voice: str = VOICE, rate: str = "+0%") -> float:
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    clean_text = text.replace("[STAND-IN] ", "")
-    communicate = edge_tts.Communicate(clean_text, voice=voice, rate=rate)
+    communicate = edge_tts.Communicate(text, voice=voice, rate=rate)
     await communicate.save(output_path)
 
     if not os.path.exists(output_path) or os.path.getsize(output_path) == 0:
@@ -144,11 +119,10 @@ async def process_slide(slide_row: dict) -> dict:
     image_path = os.path.join(SLIDES_DIR, slide_row["image_filename"])
 
     print(f"\n{'='*75}")
-    print(f"SLIDE: {slide_id} | Target: {target_seconds:.1f}s | Target Words: {target_words}")
+    print(f"SLIDE: {slide_id} | Image: {image_path} | Target: {target_seconds:.1f}s | Target Words: {target_words}")
     print(f"Vision Model: {OPENROUTER_MODEL}")
     print(f"{'='*75}")
 
-    # Check for fatal error before retry loop
     if not os.path.exists(image_path):
         print(f"[FATAL ERROR] Slide image file does not exist: '{image_path}'. Aborting slide.")
         return {
@@ -174,8 +148,8 @@ async def process_slide(slide_row: dict) -> dict:
         }
     ]
 
-    print("Requesting voiceover script from Vision Model...")
-    script = call_openrouter(messages, slide_id=slide_id)
+    print(f"Calling OpenRouter ({OPENROUTER_MODEL}) with slide image...")
+    script = call_openrouter(messages)
     rate_offset = 0
     current_script = script
     attempts = []
@@ -242,7 +216,7 @@ async def process_slide(slide_row: dict) -> dict:
             else:
                 # Step 2: Model Rewrite
                 rate_offset = 0
-                current_words = len(current_script.replace("[STAND-IN] ", "").split())
+                current_words = len(current_script.split())
                 new_target = max(10, current_words - round(gap * CALIBRATED_WPS))
                 print(f"Action: Model rewrite -> Current words: {current_words}, New target: {new_target}")
 
@@ -251,10 +225,9 @@ async def process_slide(slide_row: dict) -> dict:
                     script=current_script
                 )
                 rewrite_messages = [{"role": "user", "content": rewrite_prompt}]
-                current_script = call_openrouter(rewrite_messages, slide_id=slide_id)
+                current_script = call_openrouter(rewrite_messages)
 
         except Exception as e:
-            # Safely record failed attempt in attempts array to prevent IndexError
             err_record = {
                 "attempt": attempt_idx + 1,
                 "script": current_script,
@@ -274,7 +247,6 @@ async def process_slide(slide_row: dict) -> dict:
                 break
             print("Retrying after error...")
 
-    # Safe handling: never crash with IndexError even if all attempts errored
     last_measured = attempts[-1]["measured"] if attempts else 0.0
     print(f"Couldn't fit this narration within 3 seconds of {target_seconds} seconds. Last attempt: {last_measured:.1f} seconds.")
 

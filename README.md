@@ -97,90 +97,119 @@ Every generated MP3 is inspected with `mutagen` for real duration:
 ===========================================================================
 STARTING MAGIC STUDIO SLIDE NARRATION PIPELINE
 Provider: OpenRouter (https://openrouter.ai/api/v1/chat/completions)
-Model:    google/gemini-2.0-flash-001
+Model:    google/gemini-2.5-flash-lite
 Voice:    en-US-JennyNeural (Calibrated baseline: 2.73 WPS)
 Slides:   slide-01, slide-02, slide-03
 ===========================================================================
 
 ===========================================================================
-SLIDE: slide-01 | Target: 30.0s | Target Words: 82
-Vision Model: google/gemini-2.0-flash-001
+SLIDE: slide-01 | Image: slides\slide-01_sales_line.png | Target: 30.0s | Target Words: 82
+Vision Model: google/gemini-2.5-flash-lite
 ===========================================================================
-Requesting voiceover script from Vision Model...
-[slide-01] [SOURCE: STAND-IN SCRIPT GENERATOR - No active OPENROUTER_API_KEY]
+Calling OpenRouter (google/gemini-2.5-flash-lite) with slide image...
 
 [Attempt 1] Verdict: FAIL
 Slide ID:        slide-01
-Script:          "[STAND-IN] Monthly template marketplace sales held remarkably steady near forty thousand dollars from October through January, and then experienced an extraordinary jump to eighty-two thousand dollars in February. This dramatic acceleration highlights expanding momentum across all regional markets, largely fueled by a powerful wave of Canva Pro tier upgrades that sparked the sudden midseason surge. Meanwhile, our core engineering team expanded to twelve full-time members, positioning the organization perfectly to sustain this upward sales velocity throughout the remainder of the year."
+Script:          "Monthly template marketplace sales were around $40,000 from October to January. Then, sales jumped to $82,000 in February. This is the sales momentum this season. Revenue is up across all regions, and pro upgrades drove that February jump. The team also grew to 12 people."
 Target Length:   30.0s
-Measured Length: 33.7s
-Gap:             +3.7s
+Measured Length: 21.0s
+Gap:             -9.0s
 Rate Applied:    +0%
 --> Gap exceeds ±3.0s. Applying retry rule...
-Action: Rate nudge -> Speeding up to +10%
+Action: Rate nudge -> Slowing down to -10%
 
-[Attempt 2] Verdict: PASS
+[Attempt 2] Verdict: FAIL
 Slide ID:        slide-01
-Script:          "[STAND-IN] Monthly template marketplace sales held remarkably steady near forty thousand dollars from October through January, and then experienced an extraordinary jump to eighty-two thousand dollars in February. This dramatic acceleration highlights expanding momentum across all regional markets, largely fueled by a powerful wave of Canva Pro tier upgrades that sparked the sudden midseason surge. Meanwhile, our core engineering team expanded to twelve full-time members, positioning the organization perfectly to sustain this upward sales velocity throughout the remainder of the year."
+Script:          "Monthly template marketplace sales were around $40,000 from October to January. Then, sales jumped to $82,000 in February. This is the sales momentum this season. Revenue is up across all regions, and pro upgrades drove that February jump. The team also grew to 12 people."
 Target Length:   30.0s
-Measured Length: 30.6s
-Gap:             +0.6s
-Rate Applied:    +10%
---> Result: slide-01 PASSED timing gate (gap +0.6s within ±3.0s).
+Measured Length: 23.3s
+Gap:             -6.7s
+Rate Applied:    -10%
+--> Gap exceeds ±3.0s. Applying retry rule...
+Action: Rate nudge -> Slowing down to -20%
+
+[Attempt 3] Verdict: FAIL
+Slide ID:        slide-01
+Script:          "Monthly template marketplace sales were around $40,000 from October to January. Then, sales jumped to $82,000 in February. This is the sales momentum this season. Revenue is up across all regions, and pro upgrades drove that February jump. The team also grew to 12 people."
+Target Length:   30.0s
+Measured Length: 26.2s
+Gap:             -3.8s
+Rate Applied:    -20%
+--> Gap exceeds ±3.0s. Applying retry rule...
+Action: Model rewrite -> Current words: 45, New target: 55
+
+[Attempt 4] Verdict: FAIL
+Slide ID:        slide-01
+Script:          "Template marketplace sales averaged $40,000 October-January, then surged to $82,000 in February — showcasing strong seasonal momentum. Revenue grew across all regions, with pro upgrades fueling February's spike. Our team also expanded to 12 members."
+Target Length:   30.0s
+Measured Length: 18.8s
+Gap:             -11.2s
+Rate Applied:    +0%
+--> Gap exceeds ±3.0s. Applying retry rule...
+Action: Model rewrite -> Current words: 35, New target: 66
+
+[Attempt 5] Verdict: FAIL
+Slide ID:        slide-01
+Script:          "Template marketplace sales averaged $40,000 October-January, surging to $82,000 in February—demonstrating strong seasonal momentum. Revenue grew across all regions, with pro upgrades fueling February's spike. Our team also expanded to 12 members."
+Target Length:   30.0s
+Measured Length: 18.6s
+Gap:             -11.4s
+Rate Applied:    +0%
+--> Result: Reached maximum retry ceiling (4 retries).
+Couldn't fit this narration within 3 seconds of 30.0 seconds. Last attempt: 18.6 seconds.
 
 ===========================================================================
-SLIDE: slide-02 | Target: 20.0s | Target Words: 55
-Vision Model: google/gemini-2.0-flash-001
+SLIDE: slide-02 | Image: slides\slide-02_user_sources_pie.png | Target: 20.0s | Target Words: 55
+Vision Model: google/gemini-2.5-flash-lite
 ===========================================================================
-Requesting voiceover script from Vision Model...
-[slide-02] [SOURCE: STAND-IN SCRIPT GENERATOR - No active OPENROUTER_API_KEY]
+Calling OpenRouter (google/gemini-2.5-flash-lite) with slide image...
 
 [Attempt 1] Verdict: PASS
 Slide ID:        slide-02
-Script:          "[STAND-IN] The February signup breakdown shows the mobile app leading at fifty-five percent, followed by desktop web at thirty percent and referral links at fifteen percent. Mobile signups have now overtaken desktop as our primary acquisition channel, while customer referrals doubled year on year to support steady overall growth."
+Script:          "This pie chart shows February signup sources. Mobile app signups are highest at 55%, followed by desktop web at 30%, and referral links at 15%. The key points are that mobile signups now lead desktop, and referrals have doubled year on year."
 Target Length:   20.0s
-Measured Length: 18.9s
-Gap:             -1.1s
+Measured Length: 18.0s
+Gap:             -2.0s
 Rate Applied:    +0%
---> Result: slide-02 PASSED timing gate (gap -1.1s within ±3.0s).
+--> Result: slide-02 PASSED timing gate (gap -2.0s within ±3.0s).
 
 ===========================================================================
-SLIDE: slide-03 | Target: 15.0s | Target Words: 41
-Vision Model: google/gemini-2.0-flash-001
+SLIDE: slide-03 | Image: slides\slide-03_live_collab_photo.png | Target: 15.0s | Target Words: 41
+Vision Model: google/gemini-2.5-flash-lite
 ===========================================================================
-Requesting voiceover script from Vision Model...
-[slide-03] [SOURCE: STAND-IN SCRIPT GENERATOR - No active OPENROUTER_API_KEY]
+Calling OpenRouter (google/gemini-2.5-flash-lite) with slide image...
 
 [Attempt 1] Verdict: PASS
 Slide ID:        slide-03
-Script:          "[STAND-IN] Four designers collaborate seamlessly around a wall screen, each moving their colored cursor on the same poster draft simultaneously. Live cursors keep every collaborator in sync, while inline comments let teams share feedback without ever leaving the canvas."
+Script:          "This shows four designers collaborating in real time on a shared whiteboard. The title is "Designing Together in Real Time." Key points include live cursors for collaborators and comments directly on the canvas."
 Target Length:   15.0s
-Measured Length: 16.1s
-Gap:             +1.1s
+Measured Length: 13.7s
+Gap:             -1.3s
 Rate Applied:    +0%
---> Result: slide-03 PASSED timing gate (gap +1.1s within ±3.0s).
+--> Result: slide-03 PASSED timing gate (gap -1.3s within ±3.0s).
 
 ===========================================================================
 PIPELINE EXECUTION SUMMARY TABLE
 ===========================================================================
 Slide ID   | Target  | Measured  | Gap     | Retries  | Verdict
 ------------------------------------------------------------
-slide-01   | 30.0s   | 30.6s     | +0.6s   | 1        | PASS
-slide-02   | 20.0s   | 18.9s     | -1.1s   | 0        | PASS
-slide-03   | 15.0s   | 16.1s     | +1.1s   | 0        | PASS
+slide-01   | 30.0s   | 18.6s     | -11.4s  | 4        | FAIL
+slide-02   | 20.0s   | 18.0s     | -2.0s   | 0        | PASS
+slide-03   | 15.0s   | 13.7s     | -1.3s   | 0        | PASS
 ------------------------------------------------------------
 ```
 
 ## Review Notes
-- **Transparent Source Tagging:** The run log explicitly tags scripts generated via the stand-in fallback (`[SOURCE: STAND-IN SCRIPT GENERATOR]`) when no live `OPENROUTER_API_KEY` is supplied, preventing confusion between simulated and live vision model calls.
-- **Model Configuration Enforced:** `OPENROUTER_MODEL` is strictly loaded from the environment (`.env`) per Section 1 of the spec, with hard validation in `pipeline.py`.
-- **Retry Escalation in Action:** Slide 1 initial duration was 33.7s (+3.7s gap, exceeding the 3.0s threshold). The pipeline automatically applied Step 1 of the escalation hierarchy (Edge-TTS rate nudge to `+10%`), bringing duration to 30.6s (+0.6s gap) and passing without requiring an LLM rewrite.
-- **Direct Hits on First Attempt:** Slides 2 and 3 landed within 1.1s of target on attempt 1, demonstrating that the calibrated 2.73 WPS baseline accurately predicts narration durations.
-- **Crash Prevention:** Handled potential empty-attempts error so runs encountering repeated audio synthesis exceptions log failures cleanly without `IndexError`.
-
+- **Live Multimodal Inference:** All scripts were generated by OpenRouter (`google/gemini-2.5-flash-lite`) inspecting the base64-encoded slide images live over the wire.
+- **Full Retry Escalation Exercised:** On `slide-01` (30.0s target), the initial vision script was concise (21.0s, gap -9.0s). The pipeline exercised the entire retry ladder:
+  - Attempt 2: Edge-TTS rate nudge slowed to `-10%` (23.3s).
+  - Attempt 3: Edge-TTS rate nudge slowed to `-20%` (26.2s).
+  - Attempts 4 & 5: Model rewrites prompted the model to expand the text, hitting the hard 4-retry limit and cleanly printing the exact spec failure message without crashing.
+- **First-Attempt Timing Passes:** `slide-02` (18.0s vs 20.0s target, gap -2.0s) and `slide-03` (13.7s vs 15.0s target, gap -1.3s) both passed the timing gate (`abs(gap) <= 3.0s`) on Attempt 1.
+- **Visual-First Compliance:** In all three slides, the vision model naturally opened with the chart/image content before covering written text, adhering to Section 1 of the spec.
 
 ## App Results
-- **Success Rate:** 3 / 3 slides successfully passed (100% timing pass rate).
-- **Average Timing Deviation:** `0.93 seconds` across all final accepted audio tracks.
+- **Pass Rate:** 2 / 3 slides passed timing gates (`slide-02`, `slide-03`).
+- **Retry Ceiling Enforcement:** `slide-01` correctly marked `FAIL` with download button suppressed, demonstrating proper boundary enforcement when audio cannot be reconciled within 3.0 seconds.
 - **Audio Assets:** Generated MP3 files saved in `run_audio/` and verified with Mutagen.
-- **Artifacts:** Rendered slide images committed to `slides/` for auditability.
+- **Slide Images:** Preserved in `slides/` for reproducible evaluation.
