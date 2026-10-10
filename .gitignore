@@ -33,6 +33,15 @@ calibration_audio/
 temp/
 logs/
 
+# Environment & Secrets
+.env
+.env.*
+*.env
+!.env.example
+
+# Temp audio
+run_audio/
+
 # IDE
 .vscode/
 .idea/
