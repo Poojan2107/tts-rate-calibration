@@ -3,6 +3,7 @@ import base64
 import csv
 import json
 import os
+import sys
 import urllib.request
 from dotenv import load_dotenv
 import edge_tts
@@ -10,8 +11,8 @@ from mutagen.mp3 import MP3
 
 load_dotenv()
 
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
-OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "google/gemini-2.0-flash-001")
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL")
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
 VOICE = "en-US-JennyNeural"
@@ -39,13 +40,30 @@ Return only the script text.
 Script: {script}"""
 
 
+def check_configuration():
+    """Validate environment configuration per Section 1 of the spec."""
+    if not OPENROUTER_MODEL:
+        raise ValueError(
+            "Configuration Error: OPENROUTER_MODEL is not set in the environment. "
+            "Per Section 1 of the pipeline spec, the model ID must be read dynamically from "
+            "OPENROUTER_MODEL in the local environment and is never hardcoded."
+        )
+
+
 def encode_image_base64(image_path: str) -> str:
+    if not os.path.exists(image_path):
+        raise FileNotFoundError(f"Slide image not found at '{image_path}'")
     with open(image_path, "rb") as image_file:
         return base64.b64encode(image_file.read()).decode("utf-8")
 
 
-def call_openrouter_api(messages: list) -> str:
-    """Call OpenRouter Chat Completions API with the vision model."""
+def call_openrouter(messages: list, slide_id: str, is_standin: bool = False) -> str:
+    """Send request to OpenRouter vision API or execute clearly-labeled stand-in if specified."""
+    if is_standin or not OPENROUTER_API_KEY:
+        print(f"[{slide_id}] [SOURCE: STAND-IN SCRIPT GENERATOR - No active OPENROUTER_API_KEY]")
+        # Transparent stand-in that generates text based on target word count
+        return generate_labeled_standin_script(slide_id)
+
     headers = {
         "Authorization": f"Bearer {OPENROUTER_API_KEY}",
         "Content-Type": "application/json",
@@ -57,7 +75,7 @@ def call_openrouter_api(messages: list) -> str:
         "model": OPENROUTER_MODEL,
         "messages": messages,
         "temperature": 0.7,
-        "max_tokens": 300
+        "max_tokens": 350
     }
 
     req = urllib.request.Request(
@@ -72,49 +90,35 @@ def call_openrouter_api(messages: list) -> str:
         return res_data["choices"][0]["message"]["content"].strip()
 
 
-def generate_vision_script_gemini(slide_id: str, target_words: int) -> str:
-    """Fallback generator modeling google/gemini-2.0-flash-001 output via OpenRouter."""
+def generate_labeled_standin_script(slide_id: str) -> str:
+    """Stand-in generator clearly tagged when running in offline mode."""
     if slide_id == "slide-01":
-        # Initial draft slightly comprehensive (~95 words) to demonstrate retry rate-nudge
         return (
-            "Monthly template marketplace sales held remarkably steady near forty thousand dollars from October through January, "
+            "[STAND-IN] Monthly template marketplace sales held remarkably steady near forty thousand dollars from October through January, "
             "and then experienced an extraordinary jump to eighty-two thousand dollars in February. This dramatic acceleration "
             "highlights expanding momentum across all regional markets, largely fueled by a powerful wave of Canva Pro tier "
             "upgrades that sparked the sudden midseason surge. Meanwhile, our core engineering team expanded to twelve full-time members, "
             "positioning the organization perfectly to sustain this upward sales velocity throughout the remainder of the year."
         )
     elif slide_id == "slide-02":
-        # Target: ~55 words for 20s
         return (
-            "The February signup breakdown shows the mobile app leading at fifty-five percent, followed by desktop web at "
+            "[STAND-IN] The February signup breakdown shows the mobile app leading at fifty-five percent, followed by desktop web at "
             "thirty percent and referral links at fifteen percent. Mobile signups have now overtaken desktop as our primary "
             "acquisition channel, while customer referrals doubled year on year to support steady overall growth."
         )
     elif slide_id == "slide-03":
-        # Target: ~41 words for 15s
         return (
-            "Four designers collaborate seamlessly around a wall screen, each moving their colored cursor on the same poster "
+            "[STAND-IN] Four designers collaborate seamlessly around a wall screen, each moving their colored cursor on the same poster "
             "draft simultaneously. Live cursors keep every collaborator in sync, while inline comments let teams share feedback "
             "without ever leaving the canvas."
         )
-    return "This presentation slide details key operational metrics and highlights strategic growth achievements across the platform."
-
-
-
-def call_openrouter(messages: list, slide_id: str = "", target_words: int = 0) -> str:
-    if OPENROUTER_API_KEY:
-        try:
-            return call_openrouter_api(messages)
-        except Exception as e:
-            print(f"[OpenRouter API Error: {e}. Falling back to default Gemini-2.0-Flash response]")
-    
-    # Modeled OpenRouter Gemini-2.0-Flash output
-    return generate_vision_script_gemini(slide_id, target_words)
+    return "[STAND-IN] Presentation slide summarizing core operational metrics."
 
 
 async def generate_speech_audio(text: str, output_path: str, voice: str = VOICE, rate: str = "+0%") -> float:
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    communicate = edge_tts.Communicate(text, voice=voice, rate=rate)
+    clean_text = text.replace("[STAND-IN] ", "")
+    communicate = edge_tts.Communicate(clean_text, voice=voice, rate=rate)
     await communicate.save(output_path)
 
     if not os.path.exists(output_path) or os.path.getsize(output_path) == 0:
@@ -140,9 +144,19 @@ async def process_slide(slide_row: dict) -> dict:
     image_path = os.path.join(SLIDES_DIR, slide_row["image_filename"])
 
     print(f"\n{'='*75}")
-    print(f"SLIDE: {slide_id} | Image: {image_path} | Target: {target_seconds:.1f}s | Target Words: {target_words}")
-    print(f"OpenRouter Model: {OPENROUTER_MODEL}")
+    print(f"SLIDE: {slide_id} | Target: {target_seconds:.1f}s | Target Words: {target_words}")
+    print(f"Vision Model: {OPENROUTER_MODEL}")
     print(f"{'='*75}")
+
+    # Check for fatal error before retry loop
+    if not os.path.exists(image_path):
+        print(f"[FATAL ERROR] Slide image file does not exist: '{image_path}'. Aborting slide.")
+        return {
+            "slide_id": slide_id,
+            "status": "FATAL",
+            "attempts": [],
+            "final_attempt": None
+        }
 
     base64_image = encode_image_base64(image_path)
     initial_prompt = VISION_PROMPT_TEMPLATE.format(target_words=target_words)
@@ -160,8 +174,8 @@ async def process_slide(slide_row: dict) -> dict:
         }
     ]
 
-    print(f"Sending image and prompt to OpenRouter ({OPENROUTER_MODEL})...")
-    script = call_openrouter(messages, slide_id=slide_id, target_words=target_words)
+    print("Requesting voiceover script from Vision Model...")
+    script = call_openrouter(messages, slide_id=slide_id)
     rate_offset = 0
     current_script = script
     attempts = []
@@ -212,12 +226,12 @@ async def process_slide(slide_row: dict) -> dict:
                 }
 
             if attempt_idx >= MAX_RETRIES:
-                print(f"--> Result: Reached maximum retry limit ({MAX_RETRIES}).")
+                print(f"--> Result: Reached maximum retry ceiling ({MAX_RETRIES} retries).")
                 break
 
             print(f"--> Gap exceeds ±{TARGET_TOLERANCE}s. Applying retry rule...")
 
-            # Step 1: Edge-TTS Rate Nudge
+            # Step 1: Edge-TTS Rate Nudge (up to 2 tries: attempt 0->1, 1->2)
             if attempt_idx < 2 and abs(rate_offset) < 20:
                 if gap > TARGET_TOLERANCE:
                     rate_offset += 10
@@ -228,7 +242,7 @@ async def process_slide(slide_row: dict) -> dict:
             else:
                 # Step 2: Model Rewrite
                 rate_offset = 0
-                current_words = len(current_script.split())
+                current_words = len(current_script.replace("[STAND-IN] ", "").split())
                 new_target = max(10, current_words - round(gap * CALIBRATED_WPS))
                 print(f"Action: Model rewrite -> Current words: {current_words}, New target: {new_target}")
 
@@ -237,14 +251,33 @@ async def process_slide(slide_row: dict) -> dict:
                     script=current_script
                 )
                 rewrite_messages = [{"role": "user", "content": rewrite_prompt}]
-                current_script = call_openrouter(rewrite_messages, slide_id=slide_id, target_words=new_target)
+                current_script = call_openrouter(rewrite_messages, slide_id=slide_id)
 
         except Exception as e:
-            print(f"Attempt {attempt_idx + 1} error: {e}")
-            if attempt_idx >= MAX_RETRIES:
-                break
+            # Safely record failed attempt in attempts array to prevent IndexError
+            err_record = {
+                "attempt": attempt_idx + 1,
+                "script": current_script,
+                "rate": rate_str,
+                "target": target_seconds,
+                "measured": 0.0,
+                "gap": round(0.0 - target_seconds, 1),
+                "verdict": "ERROR",
+                "error": str(e),
+                "audio_path": ""
+            }
+            attempts.append(err_record)
+            print(f"[Attempt {attempt_idx + 1}] Encountered Error: {e}")
 
-    print(f"Couldn't fit this narration within 3 seconds of {target_seconds} seconds. Last attempt: {attempts[-1]['measured']} seconds.")
+            if attempt_idx >= MAX_RETRIES:
+                print(f"--> Result: Reached maximum retry ceiling ({MAX_RETRIES} retries).")
+                break
+            print("Retrying after error...")
+
+    # Safe handling: never crash with IndexError even if all attempts errored
+    last_measured = attempts[-1]["measured"] if attempts else 0.0
+    print(f"Couldn't fit this narration within 3 seconds of {target_seconds} seconds. Last attempt: {last_measured:.1f} seconds.")
+
     return {
         "slide_id": slide_id,
         "status": "FAILED",
@@ -254,6 +287,8 @@ async def process_slide(slide_row: dict) -> dict:
 
 
 async def main():
+    check_configuration()
+
     selected_slides = ["slide-01", "slide-02", "slide-03"]
     slides_data = []
 
@@ -283,8 +318,11 @@ async def main():
     print("-" * 60)
     for r in run_results:
         final_att = r["final_attempt"]
-        retries_used = len(r["attempts"]) - 1
-        print(f"{r['slide_id']:<10} | {final_att['target']:<5.1f}s | {final_att['measured']:<7.1f}s | {final_att['gap']:<+5.1f}s | {retries_used:<8} | {final_att['verdict']}")
+        retries_used = len(r["attempts"]) - 1 if r["attempts"] else 0
+        if final_att:
+            print(f"{r['slide_id']:<10} | {final_att['target']:<5.1f}s | {final_att['measured']:<7.1f}s | {final_att['gap']:<+5.1f}s | {retries_used:<8} | {final_att['verdict']}")
+        else:
+            print(f"{r['slide_id']:<10} | {'N/A':<7} | {'N/A':<9} | {'N/A':<7} | {retries_used:<8} | FATAL")
     print("-" * 60)
 
 

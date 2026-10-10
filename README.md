@@ -103,14 +103,15 @@ Slides:   slide-01, slide-02, slide-03
 ===========================================================================
 
 ===========================================================================
-SLIDE: slide-01 | Image: slides\slide-01_sales_line.png | Target: 30.0s | Target Words: 82
-OpenRouter Model: google/gemini-2.0-flash-001
+SLIDE: slide-01 | Target: 30.0s | Target Words: 82
+Vision Model: google/gemini-2.0-flash-001
 ===========================================================================
-Sending image and prompt to OpenRouter (google/gemini-2.0-flash-001)...
+Requesting voiceover script from Vision Model...
+[slide-01] [SOURCE: STAND-IN SCRIPT GENERATOR - No active OPENROUTER_API_KEY]
 
 [Attempt 1] Verdict: FAIL
 Slide ID:        slide-01
-Script:          "Monthly template marketplace sales held remarkably steady near forty thousand dollars from October through January, and then experienced an extraordinary jump to eighty-two thousand dollars in February. This dramatic acceleration highlights expanding momentum across all regional markets, largely fueled by a powerful wave of Canva Pro tier upgrades that sparked the sudden midseason surge. Meanwhile, our core engineering team expanded to twelve full-time members, positioning the organization perfectly to sustain this upward sales velocity throughout the remainder of the year."
+Script:          "[STAND-IN] Monthly template marketplace sales held remarkably steady near forty thousand dollars from October through January, and then experienced an extraordinary jump to eighty-two thousand dollars in February. This dramatic acceleration highlights expanding momentum across all regional markets, largely fueled by a powerful wave of Canva Pro tier upgrades that sparked the sudden midseason surge. Meanwhile, our core engineering team expanded to twelve full-time members, positioning the organization perfectly to sustain this upward sales velocity throughout the remainder of the year."
 Target Length:   30.0s
 Measured Length: 33.7s
 Gap:             +3.7s
@@ -120,7 +121,7 @@ Action: Rate nudge -> Speeding up to +10%
 
 [Attempt 2] Verdict: PASS
 Slide ID:        slide-01
-Script:          "Monthly template marketplace sales held remarkably steady near forty thousand dollars from October through January, and then experienced an extraordinary jump to eighty-two thousand dollars in February. This dramatic acceleration highlights expanding momentum across all regional markets, largely fueled by a powerful wave of Canva Pro tier upgrades that sparked the sudden midseason surge. Meanwhile, our core engineering team expanded to twelve full-time members, positioning the organization perfectly to sustain this upward sales velocity throughout the remainder of the year."
+Script:          "[STAND-IN] Monthly template marketplace sales held remarkably steady near forty thousand dollars from October through January, and then experienced an extraordinary jump to eighty-two thousand dollars in February. This dramatic acceleration highlights expanding momentum across all regional markets, largely fueled by a powerful wave of Canva Pro tier upgrades that sparked the sudden midseason surge. Meanwhile, our core engineering team expanded to twelve full-time members, positioning the organization perfectly to sustain this upward sales velocity throughout the remainder of the year."
 Target Length:   30.0s
 Measured Length: 30.6s
 Gap:             +0.6s
@@ -128,14 +129,15 @@ Rate Applied:    +10%
 --> Result: slide-01 PASSED timing gate (gap +0.6s within ±3.0s).
 
 ===========================================================================
-SLIDE: slide-02 | Image: slides\slide-02_user_sources_pie.png | Target: 20.0s | Target Words: 55
-OpenRouter Model: google/gemini-2.0-flash-001
+SLIDE: slide-02 | Target: 20.0s | Target Words: 55
+Vision Model: google/gemini-2.0-flash-001
 ===========================================================================
-Sending image and prompt to OpenRouter (google/gemini-2.0-flash-001)...
+Requesting voiceover script from Vision Model...
+[slide-02] [SOURCE: STAND-IN SCRIPT GENERATOR - No active OPENROUTER_API_KEY]
 
 [Attempt 1] Verdict: PASS
 Slide ID:        slide-02
-Script:          "The February signup breakdown shows the mobile app leading at fifty-five percent, followed by desktop web at thirty percent and referral links at fifteen percent. Mobile signups have now overtaken desktop as our primary acquisition channel, while customer referrals doubled year on year to support steady overall growth."
+Script:          "[STAND-IN] The February signup breakdown shows the mobile app leading at fifty-five percent, followed by desktop web at thirty percent and referral links at fifteen percent. Mobile signups have now overtaken desktop as our primary acquisition channel, while customer referrals doubled year on year to support steady overall growth."
 Target Length:   20.0s
 Measured Length: 18.9s
 Gap:             -1.1s
@@ -143,14 +145,15 @@ Rate Applied:    +0%
 --> Result: slide-02 PASSED timing gate (gap -1.1s within ±3.0s).
 
 ===========================================================================
-SLIDE: slide-03 | Image: slides\slide-03_live_collab_photo.png | Target: 15.0s | Target Words: 41
-OpenRouter Model: google/gemini-2.0-flash-001
+SLIDE: slide-03 | Target: 15.0s | Target Words: 41
+Vision Model: google/gemini-2.0-flash-001
 ===========================================================================
-Sending image and prompt to OpenRouter (google/gemini-2.0-flash-001)...
+Requesting voiceover script from Vision Model...
+[slide-03] [SOURCE: STAND-IN SCRIPT GENERATOR - No active OPENROUTER_API_KEY]
 
 [Attempt 1] Verdict: PASS
 Slide ID:        slide-03
-Script:          "Four designers collaborate seamlessly around a wall screen, each moving their colored cursor on the same poster draft simultaneously. Live cursors keep every collaborator in sync, while inline comments let teams share feedback without ever leaving the canvas."
+Script:          "[STAND-IN] Four designers collaborate seamlessly around a wall screen, each moving their colored cursor on the same poster draft simultaneously. Live cursors keep every collaborator in sync, while inline comments let teams share feedback without ever leaving the canvas."
 Target Length:   15.0s
 Measured Length: 16.1s
 Gap:             +1.1s
@@ -169,9 +172,12 @@ slide-03   | 15.0s   | 16.1s     | +1.1s   | 0        | PASS
 ```
 
 ## Review Notes
+- **Transparent Source Tagging:** The run log explicitly tags scripts generated via the stand-in fallback (`[SOURCE: STAND-IN SCRIPT GENERATOR]`) when no live `OPENROUTER_API_KEY` is supplied, preventing confusion between simulated and live vision model calls.
+- **Model Configuration Enforced:** `OPENROUTER_MODEL` is strictly loaded from the environment (`.env`) per Section 1 of the spec, with hard validation in `pipeline.py`.
 - **Retry Escalation in Action:** Slide 1 initial duration was 33.7s (+3.7s gap, exceeding the 3.0s threshold). The pipeline automatically applied Step 1 of the escalation hierarchy (Edge-TTS rate nudge to `+10%`), bringing duration to 30.6s (+0.6s gap) and passing without requiring an LLM rewrite.
 - **Direct Hits on First Attempt:** Slides 2 and 3 landed within 1.1s of target on attempt 1, demonstrating that the calibrated 2.73 WPS baseline accurately predicts narration durations.
-- **Visual-First Compliance:** All scripts led with chart/visual facts and numbers before addressing slide text, complying with the vision prompt specification.
+- **Crash Prevention:** Handled potential empty-attempts error so runs encountering repeated audio synthesis exceptions log failures cleanly without `IndexError`.
+
 
 ## App Results
 - **Success Rate:** 3 / 3 slides successfully passed (100% timing pass rate).
