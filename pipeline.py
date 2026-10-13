@@ -4,6 +4,7 @@ import csv
 import json
 import os
 import sys
+import time
 import urllib.request
 from dotenv import load_dotenv
 import edge_tts
@@ -119,10 +120,22 @@ def audit_factual_entailment(image_b64: str, script: str) -> dict:
                     "evaluations": res_content.get("evaluations", [])
                 }
         except urllib.error.HTTPError as e:
-            if e.code == 429 and attempt < 3:
-                time.sleep(3)
-                continue
+            if e.code == 429:
+                if attempt < 3:
+                    time.sleep(3)
+                    continue
+                else:
+                    return {
+                        "overall_verdict": "FAIL",
+                        "ungrounded_sentences": ["Auditor rate limit exceeded after 4 retries"],
+                        "evaluations": []
+                    }
             raise e
+    return {
+        "overall_verdict": "FAIL",
+        "ungrounded_sentences": ["Auditor failed to return a verdict"],
+        "evaluations": []
+    }
 
 
 def check_configuration():

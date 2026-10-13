@@ -236,7 +236,7 @@ Evaluated against the ground truth answer key (`key_visual_point`) from `Canva C
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | **`slide-01` (Initial Run)** | 30.0s | *"Template marketplace sales averaged $40,000 October-January, surging to $82,000 in February—demonstrating strong seasonal momentum. Revenue grew across all regions, with pro upgrades fueling February's spike. Our team also expanded to 12 members."* | 18.6s | -11.4s | 4 | **TIMING MISS** | Baseline run before normalization and unconstrained rewrite fix; failed timing due to rigid prompt constraint. |
 | **`slide-01` (Unconstrained Rewrite)** | 30.0s | *"Observe the chart: monthly template marketplace sales showcase remarkable growth. After steady performance around $40,000 from October to January, sales dramatically surged to $82,000 in February..."* | 30.0s | +0.0s | 4 | **SUPERSEDED** | Reached 30.0s (+0.0s), but rejected by Section 6 Entailment Gate for ungrounded speculation (*"seize future opportunities"*). |
-| **`slide-01` (Forced Short Draft - Section 8)** | 30.0s | *"Sales Momentum This Season. Monthly template marketplace sales held near $40,000 from October to January. Sales then jumped to $82,000 in February. Revenue is up across all regions. Pro upgrades drove the February jump. The team grew to 12 people."* | 22.6s | -7.4s | 4 | **TIMING MISS** | Forced onto rewrite path without prompt hints; proves natural factual density ceiling (42 grounded words) when forbidden from inventing padding. |
+| **`slide-01` (Forced Short Draft - Section 8)** | 30.0s | *"Sales Momentum This Season. Monthly template marketplace sales held near $40,000 from October to January. Sales then jumped to $82,000 in February. Revenue is up across all regions. Pro upgrades drove the February jump. The team grew to 12 people."* | 22.6s | -7.4s | 4 | **TIMING MISS** | Forced onto rewrite path without prompt hints; proves natural factual density ceiling (40 grounded words) when forbidden from inventing padding. |
 | **`slide-02` (Forced Short Draft - Section 8)** | 20.0s | *"This pie chart displays February signup sources. Mobile app signups constitute 55%, desktop web accounts for 30%, and referral links represent 15%. Mobile signups now lead desktop. Referrals doubled year on year."* | 17.8s | -2.2s | 4 | **PASS** | Diagnostic validation proving generalized prompt succeeds on non-sales pie chart without hints (exercises Step 2 rewrite under gate). |
 
 ### 2. Root Cause Analysis: Why Did `slide-01` Miss Timing?
@@ -331,9 +331,18 @@ rate_offset = 0
 #### 3. Decoupling the Rate Ladder Post-Rewrite (`attempts_since_rewrite`)
 The rate nudge condition is tied to `attempts_since_rewrite < 2` rather than the global loop counter, resetting `attempts_since_rewrite = 0` whenever a model rewrite executes. This re-arms the rate ladder for rewritten scripts.
 
-### 4. Raw Terminal Rerun Output Exercising the Rewrite Step (`slide-01`)
+### 4. Raw Terminal Rerun Output Exercising the Rewrite Step (`slide-01`) [SUPERSEDED HISTORICAL RUN]
 
-The following is the verbatim raw terminal output from `pipeline.py` on `slide-01`. The initial rate nudges fail to close the gap on the 47-word draft, cleanly escalating to Step 2 (Model Rewrite) where the corrected rewrite prompt and normalized baseline bring the slide to a **perfect +0.0s pass**:
+> [!WARNING]
+> **SUPERSEDED HISTORICAL RUN (Unconstrained Rewrite without Factual Gate):**
+> The terminal run below is preserved for historical diagnostic documentation of the Step 2 model rewrite mechanics and mathematical baseline normalization (`new_target = 76 words`). It was produced on an intermediate commit using the unconstrained rewrite prompt (*"Elaborate on trends, context, and implications"*), **prior to the implementation of the pre-synthesis Factual Entailment Gate in Section 6**.
+> 
+> While this run demonstrated that baseline normalization successfully allowed word expansion to reach 30.0s (+0.0s gap), the passing Attempt 5 script contained ungrounded corporate speculation (*"seize future opportunities in this thriving market"*). **Under our current production codebase (commit `9d269d4` and later), this script is flagged `UNGROUNDED` by the Section 6 gate and strictly blocked from synthesis.**
+> 
+> - For the **live passing run of `slide-01` under the shipped codebase and active gate**, see **Section 7** (27.2s, -2.8s gap).
+> - For the **rigorous multi-slide test of the generalized rewrite prompt under the active gate**, see **Section 8**.
+
+The following is the verbatim raw terminal output from the historical diagnostic rerun of `pipeline.py` on `slide-01`. In this unconstrained test, the initial rate nudges failed to close the gap on the 47-word draft, cleanly escalating to Step 2 (Model Rewrite) where the normalized baseline and unconstrained prompt brought the slide to a timing pass (+0.0s), which was subsequently superseded by our grounded prompt and entailment gate:
 
 ```
 ===========================================================================
@@ -709,9 +718,9 @@ Model: google/gemini-2.5-flash-lite (temp = 0.0) | Slide: slide-01
 - **Retries Used:** 2 retries (Rate Nudges to -10% and -20%).
 
 ##### Crucial Architectural Reality: This Pass Bypasses the Rewrite Path
-1. **How this standard production run passed:** When run without forcing an artificially short draft, the live multimodal vision model generated a 47-word grounded draft. At this length, Edge-TTS rate slowing to -20% brought audio duration to **27.2 seconds** (gap -2.8s), passing cleanly on Attempt 3.
+1. **How this standard production run passed:** When run without forcing an artificially short draft, the live multimodal vision model generated a 45-word grounded draft. At this length, Edge-TTS rate slowing to -20% brought audio duration to **27.2 seconds** (gap -2.8s), passing cleanly on Attempt 3.
 2. **Rewrite Step Never Executed:** Because the rate ladder closed the gap within tolerance on Attempt 3, the pipeline finished successfully and never escalated to Attempt 4 (the Step 2 Model Rewrite).
-3. **Contrast with the Forced Rewrite Test in Section 8:** When forced onto the rewrite path (`--force-short-draft`), the prompt strictly forbids hallucinating ungrounded corporate filler. Because `slide-01` contains only 2 numbers and 3 bullet points, the rewritten text caps out at 42 words (22.6s at -10%), exposing the natural factual density limit of the slide.
+3. **Contrast with the Forced Rewrite Test in Section 8:** When forced onto the rewrite path (`--force-short-draft`), the prompt strictly forbids hallucinating ungrounded corporate filler. Because `slide-01` contains only 2 numbers and 3 bullet points, the rewritten text caps out at 40 words (22.6s at -10%), exposing the natural factual density limit of the slide.
 
 ---
 
@@ -923,10 +932,10 @@ slide-01   | 30.0s   | 22.6s     | -7.4s   | 4        | FAIL
 #### What These Dual Empirical Runs Confirm:
 
 1. **The Rewrite Mechanism Operates Correctly Across Slide Formats:**
-   On `slide-02` (pie chart), the generalized rewrite prompt successfully incorporated the pie chart categories, percentages (55%, 30%, 15%), and written bullet points, expanding the script to 34 words and achieving a **17.8s pass (gap -2.2s)** under greedy decoding with 100% grounded sentences.
+   On `slide-02` (pie chart), the generalized rewrite prompt successfully incorporated the pie chart categories, percentages (55%, 30%, 15%), and written bullet points, expanding the script to 32 words and achieving a **17.8s pass (gap -2.2s)** under greedy decoding with 100% grounded sentences.
 2. **Rate Ladder Decoupling Verified:**
    On both slides, once Step 2 executed, `attempts_since_rewrite` was reset to 0, allowing Attempt 5 to execute a rate nudge (-10%) on the rewritten text rather than being permanently locked out at +0%.
 3. **The Natural Factual Density Ceiling:**
-   On `slide-01`, when strictly forbidden from inventing external corporate filler, the model exhausted all visible facts at 42 words (title, monthly line flatline, surge, regional revenue, pro upgrades, team of 12). At -10% speed, 42 words took 22.6s (gap -7.4s). Because the pipeline strictly blocks ungrounded text from bridging the gap, it cleanly hit the 4-retry ceiling and blocked audio export.
+   On `slide-01`, when strictly forbidden from inventing external corporate filler, the model exhausted all visible facts at 40 words (title, monthly line flatline, surge, regional revenue, pro upgrades, team of 12). At -10% speed, 40 words took 22.6s (gap -7.4s). Because the pipeline strictly blocks ungrounded text from bridging the gap, it cleanly hit the 4-retry ceiling and blocked audio export.
 4. **Contrast with Section 7 Pass:**
-   In Section 7, `slide-01` passed timing at 28.9s on Attempt 3 solely because the initial vision model happened to generate a 47-word draft that reached 28.9s at -20% speed—never exercising Step 2 rewrite. When forced onto the rewrite path without prompt hints, `slide-01` accurately exposes the physical factual density limit of a 30s target applied to a 2-fact slide.
+   In Section 7, `slide-01` passed timing at 27.2s (gap -2.8s) on Attempt 3 solely because the initial vision model generated a 45-word draft that reached 27.2s at -20% speed—never exercising Step 2 rewrite. When forced onto the rewrite path without prompt hints, `slide-01` accurately exposes the physical factual density limit of a 30s target applied to a 2-fact slide.
