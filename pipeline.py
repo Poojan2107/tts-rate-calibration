@@ -35,8 +35,8 @@ Return only the script text, with nothing before or after it."""
 
 REWRITE_PROMPT_TEMPLATE = """Rewrite this voiceover script to reach about {target_words} words.
 Keep the chart or main picture first.
-Expand the length by describing visible chart trends and data points in detail (such as the monthly progression from October through January at $40,000, and the surge to $82,000 in February), the visual line trajectory, and thoroughly covering all bullet points from the slide.
-Do not invent future predictions, corporate strategy, or ungrounded implications—every detail must be directly readable or visible on the slide.
+Expand the length strictly by describing the visible visual elements in full detail: break down each data point and progression step-by-step, contrast the values and percentages, describe the visual trend trajectory or layout, and give each bullet point its own full spoken sentence rather than combining them.
+Do not invent future predictions, corporate strategy, external market conditions, or speculative implications—every detail and metric must be directly readable or visible on the slide.
 Return only the script text.
 
 Script: {script}"""
@@ -240,12 +240,25 @@ async def process_slide(slide_row: dict, force_short_draft: bool = False) -> dic
     ]
 
     if force_short_draft:
-        print("\n[TEST MODE: FORCE SHORT DRAFT] Initializing with concise 45-word Attempt 1 draft to exercise Step 2 rewrite path under gate...")
-        script = (
-            "Monthly template marketplace sales were around $40,000 from October to January. "
-            "Then, sales jumped to $82,000 in February. This is the sales momentum this season. "
-            "Revenue is up across all regions, and pro upgrades drove that February jump. "
-            "The team also grew to 12 people."
+        print(f"\n[TEST MODE: FORCE SHORT DRAFT] Initializing with concise draft for {slide_id} to exercise Step 2 rewrite path under gate...")
+        short_drafts = {
+            "slide-01": (
+                "Monthly template marketplace sales were around $40,000 from October to January. "
+                "Then, sales jumped to $82,000 in February. This is the sales momentum this season. "
+                "Revenue is up across all regions, and pro upgrades drove that February jump. "
+                "The team also grew to 12 people."
+            ),
+            "slide-02": (
+                "This pie chart shows signup sources. "
+                "Mobile app signups lead at 55%, desktop web is 30%, and referral links are 15%."
+            ),
+            "slide-03": (
+                "Four designers are collaborating in real time on a shared whiteboard."
+            )
+        }
+        script = short_drafts.get(
+            slide_id,
+            "This slide presents key findings and visual data points."
         )
     else:
         print(f"Calling OpenRouter ({OPENROUTER_MODEL}) with slide image...")

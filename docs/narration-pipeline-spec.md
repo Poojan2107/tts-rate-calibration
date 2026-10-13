@@ -51,8 +51,8 @@ Each recoverable failure type is explicitly identified and spends from the retry
 ```
 Rewrite this voiceover script to reach about {target_words} words.
 Keep the chart or main picture first.
-Expand the length by describing visible chart trends and data points in detail (such as the monthly progression from October through January at $40,000, and the surge to $82,000 in February), the visual line trajectory, and thoroughly covering all bullet points from the slide.
-Do not invent future predictions, corporate strategy, or ungrounded implications—every detail must be directly readable or visible on the slide.
+Expand the length strictly by describing the visible visual elements in full detail: break down each data point and progression step-by-step, contrast the values and percentages, describe the visual trend trajectory or layout, and give each bullet point its own full spoken sentence rather than combining them.
+Do not invent future predictions, corporate strategy, external market conditions, or speculative implications—every detail and metric must be directly readable or visible on the slide.
 Return only the script text.
 
 Script: {script}
