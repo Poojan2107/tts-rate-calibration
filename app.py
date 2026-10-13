@@ -414,6 +414,7 @@ with col_left:
     # Tab 1: Benchmark Runs
     with tab_eval:
         run_labels = {
+            "live": "■ LIVE STUDIO (Run Selected Slide)",
             "run_h04": "run_h04 · Paid seats by plan [20.0s] — PASS (Gap -0.2s)",
             "run_h01": "run_h01 · Paid seats by plan [30.0s] — FAIL (Retry limit reached, Locked)",
             "run_h02": "run_h02 · Weekly active editors [20.0s] — PASS (Gap -2.3s)",
@@ -423,7 +424,7 @@ with col_left:
         }
         
         raw_query = st.query_params.to_dict() if hasattr(st.query_params, "to_dict") else {}
-        q_run = raw_query.get("run", "run_h04")
+        q_run = raw_query.get("run", "live")
         default_idx = list(run_labels.keys()).index(q_run) if q_run in run_labels else 0
 
         chosen_run_id = st.selectbox(
@@ -432,14 +433,17 @@ with col_left:
             format_func=lambda x: run_labels[x],
             index=default_idx
         )
-        selected_holdout = holdout_dict.get(chosen_run_id)
-        if selected_holdout:
-            sid = selected_holdout["slide_id"]
-            h_files = [f for f in os.listdir("holdout_slides") if f.startswith(sid)] if os.path.exists("holdout_slides") else []
-            if h_files:
-                selected_image_path = os.path.join("holdout_slides", h_files[0])
-                slide_label = os.path.splitext(h_files[0])[0]
-            target_seconds = float(selected_holdout["target_seconds"])
+        if chosen_run_id != "live":
+            selected_holdout = holdout_dict.get(chosen_run_id)
+            if selected_holdout:
+                sid = selected_holdout["slide_id"]
+                h_files = [f for f in os.listdir("holdout_slides") if f.startswith(sid)] if os.path.exists("holdout_slides") else []
+                if h_files:
+                    selected_image_path = os.path.join("holdout_slides", h_files[0])
+                    slide_label = os.path.splitext(h_files[0])[0]
+                target_seconds = float(selected_holdout["target_seconds"])
+        else:
+            selected_holdout = None
 
     # Tab 2: Holdout Deck
     with tab_holdout:

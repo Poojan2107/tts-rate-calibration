@@ -965,8 +965,8 @@ Six experimental runs were executed across the holdout deck (`slide_11`, `slide_
 | **`run_h02`** | `slide_12` | Weekly active editors, Q1 | 20.0s | 17.7s | -2.3s | 1 | *Active editors climbed about 40% in the six weeks after the week 7 release* | **NO** (Missed: does not mention week 7 release or 40% climb) | **PASS** | ⬇️ **Unlocked (Downloaded)** |
 | **`run_h03`** | `slide_15` | Monthly sales since September | 20.0s | 18.8s | -1.2s | 0 | *Sales jumped about 50% when the catering menu launched in December and stayed at that higher level* | **YES** (Covered) | **PASS** | ⬇️ **Unlocked (Downloaded)** |
 | **`run_h04`** | `slide_11` | Paid seats by plan | 20.0s | 19.8s | -0.2s | 0 | *The new Teams plan grew from zero to 15,000 seats in two months, passing Enterprise* | **YES** (Covered) | **PASS** | ⬇️ **Unlocked (Downloaded)** |
-| **`run_h05`** | `slide_12` | Weekly active editors, Q1 | 30.0s | 30.6s | +0.6s | 0 | *Active editors climbed about 40% in the six weeks after the week 7 release* | **NO** (Missed: states week 7 release and 2.1M-2.9M climb, but omits explicit 40% rate) | **PASS** | ⬇️ **Unlocked (Downloaded)** |
-| **`run_h06`** | `slide_15` | Monthly sales since September | 30.0s | 28.3s | -1.7s | 1 | *Sales jumped about 50% when the catering menu launched in December and stayed at that higher level* | **YES** (Covered) | **PASS** | ⬇️ **Unlocked (Downloaded)** |
+| **`run_h05`** | `slide_12` | Weekly active editors, Q1 | 30.0s | 29.6s | -0.4s | 0 | *Active editors climbed about 40% in the six weeks after the week 7 release* | **NO** (Missed: states week 7 release and 2.1M-2.9M climb, but omits explicit 40% rate) | **PASS** | ⬇️ **Unlocked (Downloaded)** |
+| **`run_h06`** | `slide_15` | Monthly sales since September | 30.0s | 29.2s | -0.8s | 0 | *Sales jumped about 50% when the catering menu launched in December and stayed at that higher level* | **YES** (Covered) | **PASS** | ⬇️ **Unlocked (Downloaded)** |
 
 ### 3. Key Visual Point Coverage & Semantic Verification
 
