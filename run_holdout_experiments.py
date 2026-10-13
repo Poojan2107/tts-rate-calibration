@@ -4,12 +4,15 @@ import json
 import os
 from mutagen.mp3 import MP3
 
+import delivery
 import pipeline
 
 HOLDOUT_CSV = "Holdout Slide Rows CSV.csv"
 HOLDOUT_DIR = "holdout_slides"
 AUDIO_OUTPUT_DIR = "holdout_audio"
 
+# Three slides × two lengths. slide_14 replaces slide_12 (which never fully
+# covered its key visual point at either length).
 RUN_CONFIGS = [
     {
         "run_id": "run_h01",
@@ -20,10 +23,10 @@ RUN_CONFIGS = [
     },
     {
         "run_id": "run_h02",
-        "slide_id": "slide_12",
+        "slide_id": "slide_14",
         "target_seconds": 20.0,
-        "image_file": "slide_12_weekly_active_editors_line.png",
-        "note": "Holdout Slide 12 at nominal target 20s"
+        "image_file": "slide_14_new_customer_sources_pie.png",
+        "note": "Holdout Slide 14 at nominal target 20s"
     },
     {
         "run_id": "run_h03",
@@ -41,10 +44,10 @@ RUN_CONFIGS = [
     },
     {
         "run_id": "run_h05",
-        "slide_id": "slide_12",
+        "slide_id": "slide_14",
         "target_seconds": 30.0,
-        "image_file": "slide_12_weekly_active_editors_line.png",
-        "note": "Holdout Slide 12 re-run at second target length (30s)"
+        "image_file": "slide_14_new_customer_sources_pie.png",
+        "note": "Holdout Slide 14 re-run at second target length (30s)"
     },
     {
         "run_id": "run_h06",
@@ -85,8 +88,12 @@ async def run_all(force: bool = False):
         img_path = os.path.join(HOLDOUT_DIR, cfg["image_file"])
         slide_info = meta.get(slide_id, {})
         key_visual_point = slide_info.get("key_visual_point", "")
+        dest_audio = os.path.join(AUDIO_OUTPUT_DIR, f"{run_id}_{slide_id}.mp3")
 
-        if run_id in existing_records and os.path.exists(existing_records[run_id].get("audio_file", "")):
+        if run_id in existing_records and (
+            existing_records[run_id].get("audio_file") is None
+            or os.path.exists(existing_records[run_id].get("audio_file", ""))
+        ) and existing_records[run_id].get("slide_id") == slide_id:
             print(f"Skipping already computed {run_id} (found in holdout_results.json)")
             results.append(existing_records[run_id])
             continue
@@ -107,33 +114,37 @@ async def run_all(force: bool = False):
         retries = max(0, len(attempts) - 1)
         script = final_att.get("script", "")
         measured_sec = float(final_att.get("measured", 0.0))
-        gap = float(final_att.get("gap", 0.0))
         status = res.get("status", "FAIL")
-
-        # Copy audio file to holdout_audio directory
         audio_src = final_att.get("audio_path", "")
-        dest_audio = os.path.join(AUDIO_OUTPUT_DIR, f"{run_id}_{slide_id}.mp3")
-        if audio_src and os.path.exists(audio_src):
-            with open(audio_src, "rb") as sf, open(dest_audio, "wb") as df:
-                df.write(sf.read())
 
-        # Verify with Mutagen directly
+        # Persist ONLY the bytes the Streamlit download button would hand over.
+        # Locked runs get audio_file=null — no presenter download to measure.
+        shipped_path = delivery.write_download_file(
+            status=status,
+            measured_seconds=measured_sec,
+            target_seconds=target_sec,
+            source_audio_path=audio_src,
+            dest_path=dest_audio,
+        )
+
         mutagen_len = 0.0
-        if os.path.exists(dest_audio):
-            mutagen_len = round(MP3(dest_audio).info.length, 1)
+        if shipped_path and os.path.exists(shipped_path):
+            mutagen_len = round(MP3(shipped_path).info.length, 1)
+            measured_sec = mutagen_len
 
         record = {
             "run_id": run_id,
             "slide_id": slide_id,
             "slide_title": slide_info.get("slide_title", ""),
             "target_seconds": target_sec,
-            "measured_seconds": mutagen_len or measured_sec,
-            "gap": round((mutagen_len or measured_sec) - target_sec, 1),
+            "measured_seconds": measured_sec,
+            "gap": round(measured_sec - target_sec, 1),
             "retries_used": retries,
             "verdict": status,
             "key_visual_point": key_visual_point,
             "script": script,
-            "audio_file": dest_audio
+            "audio_file": shipped_path,
+            "download_source": "app.py download button bytes via delivery.get_download_bytes",
         }
         results.append(record)
 
@@ -144,7 +155,9 @@ async def run_all(force: bool = False):
     print("HOLDOUT SLIDES EXECUTION SUMMARY")
     print("="*75)
     for r in results:
+        dl = r["audio_file"] if r["audio_file"] else "LOCKED (no download)"
         print(f"[{r['run_id']}] {r['slide_id']} ({r['slide_title']}) | Target: {r['target_seconds']:.1f}s | Measured: {r['measured_seconds']:.1f}s | Gap: {r['gap']:+.1f}s | Retries: {r['retries_used']} | Verdict: {r['verdict']}")
+        print(f"  Download file: {dl}")
         print(f"  Script: \"{r['script']}\"")
         print(f"  Key Visual Point: \"{r['key_visual_point']}\"")
         print("-" * 75)

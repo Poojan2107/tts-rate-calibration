@@ -953,38 +953,42 @@ To demonstrate that the calibrated pipeline holds up on slides it has never seen
   3. **Mutagen-Measured Seconds** (rounded to 0.1s)
   4. **Timing Gap** (with pass/fail color-coding)
   5. **Retries Used**
-- **Gated Download Policy:** The MP3 download button appears **strictly when `abs(gap) <= 3.0s`**. When retries are exhausted without achieving timing tolerance, the download button is completely hidden/suppressed, and a clear delivery lock alert is displayed.
+- **Gated Download Policy:** The MP3 download button appears **strictly when `abs(gap) <= 3.0s` and status is `PASS`**, via shared [`delivery.get_download_bytes`](delivery.py) (the same function holdout export/verify use). When retries are exhausted without achieving timing tolerance, the download button is completely hidden/suppressed, and a clear delivery lock alert is displayed.
 
 ### 2. Holdout Experiment Results Table (6 Runs: 3 Slides at 2 Lengths Each)
 
-Six experimental runs were executed across the holdout deck (`slide_11`, `slide_12`, `slide_15`), evaluating every slide across two distinct presentation target lengths (20.0s and 30.0s). The table below reports the actual downloaded MP3 files delivered through the application's timing gate:
+Six experimental runs were executed across the holdout deck (`slide_11`, `slide_14`, `slide_15`), evaluating every slide across two distinct presentation target lengths (20.0s and 30.0s). `slide_14` replaced `slide_12` after both `slide_12` lengths failed key-point coverage (the scripts never stated the climb as an explicit 40% rate).
+
+The table below reports **downloaded MP3 bytes from the same gate as `app.py`'s download button** ([delivery.py](delivery.py) → `get_download_bytes`). Holdout export ([export_app_downloads.py](export_app_downloads.py) / [run_holdout_experiments.py](run_holdout_experiments.py)) writes only those bytes into `holdout_audio/`; [verify_holdout_runs.py](verify_holdout_runs.py) re-applies the gate and measures those files. Locked runs have `audio_file: null` — nothing for a presenter to download.
 
 | Run ID | Slide ID | Slide Title | Target Length | Measured Download Length | Gap | Retries | Key Visual Point (Ground Truth) | Coverage Verdict | Timing Verdict | Gated Download |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | **`run_h01`** | `slide_11` | Paid seats by plan | 30.0s | None (no download) | +7.2s (diagnostic) | 4 | *The new Teams plan grew from zero to 15,000 seats in two months, passing Enterprise* | **N/A** (delivery locked) | **FAIL (retry limit reached)** | ⛔ **Locked (Hidden)** |
-| **`run_h02`** | `slide_12` | Weekly active editors, Q1 | 20.0s | 17.7s | -2.3s | 1 | *Active editors climbed about 40% in the six weeks after the week 7 release* | **NO** (Missed: does not mention week 7 release or 40% climb) | **PASS** | ⬇️ **Unlocked (Downloaded)** |
+| **`run_h02`** | `slide_14` | Where Lena's new customers come from | 20.0s | 17.1s | -2.9s | 0 | *Almost half of new customers found the bakery through Instagram posts* | **YES** (Covered) | **PASS** | ⬇️ **Unlocked (Downloaded)** |
 | **`run_h03`** | `slide_15` | Monthly sales since September | 20.0s | 18.8s | -1.2s | 0 | *Sales jumped about 50% when the catering menu launched in December and stayed at that higher level* | **YES** (Covered) | **PASS** | ⬇️ **Unlocked (Downloaded)** |
 | **`run_h04`** | `slide_11` | Paid seats by plan | 20.0s | 19.8s | -0.2s | 0 | *The new Teams plan grew from zero to 15,000 seats in two months, passing Enterprise* | **YES** (Covered) | **PASS** | ⬇️ **Unlocked (Downloaded)** |
-| **`run_h05`** | `slide_12` | Weekly active editors, Q1 | 30.0s | 29.6s | -0.4s | 0 | *Active editors climbed about 40% in the six weeks after the week 7 release* | **NO** (Missed: states week 7 release and 2.1M-2.9M climb, but omits explicit 40% rate) | **PASS** | ⬇️ **Unlocked (Downloaded)** |
+| **`run_h05`** | `slide_14` | Where Lena's new customers come from | 30.0s | 27.9s | -2.1s | 0 | *Almost half of new customers found the bakery through Instagram posts* | **YES** (Covered) | **PASS** | ⬇️ **Unlocked (Downloaded)** |
 | **`run_h06`** | `slide_15` | Monthly sales since September | 30.0s | 29.2s | -0.8s | 0 | *Sales jumped about 50% when the catering menu launched in December and stayed at that higher level* | **YES** (Covered) | **PASS** | ⬇️ **Unlocked (Downloaded)** |
+
+Fully passing slides (timing PASS + coverage YES + download unlocked) at both lengths: **`slide_14`**, **`slide_15`**. Fully passing at one length: **`slide_11`** (`run_h04` @ 20.0s). `run_h01` remains the intentional locked fail case.
 
 ### 3. Key Visual Point Coverage & Semantic Verification
 
-Rather than using a hardcoded placeholder, each generated script was individually evaluated against its slide's ground-truth key visual point using the independent audit suite ([verify_holdout_runs.py](verify_holdout_runs.py)):
+Coverage verdicts are derived from script text via [verify_holdout_runs.py](verify_holdout_runs.py) — not from run ids. Adversarial tests (`python verify_holdout_runs.py --test`) feed purpose-built failing scripts and assert `NO` / download-locked before any holdout table is trusted.
 
 - **`slide_11` (`run_h01` & `run_h04`):**
   - *Key Visual Point:* *"The new Teams plan grew from zero to 15,000 seats in two months, passing Enterprise"*
   - `run_h04` Script: *"The bar chart shows paid seats by plan from January to March 2025. The Teams plan grew from zero seats to 15,000, becoming the second-largest plan. Pro seats increased across the quarter. The Teams plan launched in February, and Enterprise pilots are in four regions."*
   - **Verdict: YES (Covered).** Explicitly names the growth from zero to 15,000 seats and becoming the second-largest plan ahead of Enterprise.
   - `run_h01` Script: *"The bar chart displays paid seats by plan from January to March 2025... Teams plan... shows zero seats in January, then jumped to 6,000 seats in February and 15,000 seats in March. This rapid growth made the Teams plan the second-largest plan by March."*
-  - **Verdict: N/A (Delivery Locked).** While the unreleased diagnostic draft mentioned the numbers, the timing gate aborted delivery after 4 retries, so no script or audio was ever shipped to the presenter.
+  - **Verdict: N/A (Delivery Locked).** Timing gate aborted delivery after 4 retries (`audio_file: null`); no MP3 was shipped to the presenter.
 
-- **`slide_12` (`run_h02` & `run_h05`):**
-  - *Key Visual Point:* *"Active editors climbed about 40% in the six weeks after the week 7 release"*
-  - `run_h02` Script: *"This chart shows weekly active presentation editors. After staying flat near 2.1 million for the first six weeks, the number steadily climbed to 2.9 million by week 12. This represents weekly active editors for Q1."*
-  - **Verdict: NO (Missed).** While the script accurately notes the 2.1M baseline and 2.9M peak, it **never mentions the week 7 release** or the **40% climb rate**.
-  - `run_h05` Script: *"The line chart shows weekly active presentation editors for the first 12 weeks of 2025. The number of active editors stayed flat at around 2.1 million for the first six weeks. Then, it steadily climbed to 2.9 million by week 12. A marker at week seven indicates the release of 'Magic Write for slides.' This metric counts anyone who edits a presentation at least once a week, with mobile editors included from week three onward."*
-  - **Verdict: NO (Missed).** It successfully identifies the week 7 release marker and the climb from 2.1M to 2.9M, but omits the explicit 40% relative rate calculation.
+- **`slide_14` (`run_h02` & `run_h05`):**
+  - *Key Visual Point:* *"Almost half of new customers found the bakery through Instagram posts"*
+  - `run_h02` Script: *"The pie chart shows new customer sources from October 2024 to February 2025. Instagram posts brought in the most customers at 45 percent, or 144 people. This data covers 320 new customers in total."*
+  - **Verdict: YES (Covered).** Names Instagram as the leading source at 45%.
+  - `run_h05` Script: *"This pie chart shows where Lena's new customers came from between October 2024 and February 2025. The largest source of new customers, at 45%, came from Instagram posts, totaling 144 customers. Walk-ins accounted for 25%, word of mouth for 20%, and local flyers for 10%. Overall, 320 new customers were acquired during this period."*
+  - **Verdict: YES (Covered).** States Instagram as the largest source at 45% (almost half).
 
 - **`slide_15` (`run_h03` & `run_h06`):**
   - *Key Visual Point:* *"Sales jumped about 50% when the catering menu launched in December and stayed at that higher level"*

@@ -5,6 +5,7 @@ import tempfile
 import streamlit as st
 from PIL import Image
 
+import delivery
 import pipeline
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -417,8 +418,8 @@ with col_left:
             "live": "■ LIVE STUDIO (Run Selected Slide)",
             "run_h04": "run_h04 · Paid seats by plan [20.0s] — PASS (Gap -0.2s)",
             "run_h01": "run_h01 · Paid seats by plan [30.0s] — FAIL (Retry limit reached, Locked)",
-            "run_h02": "run_h02 · Weekly active editors [20.0s] — PASS (Gap -2.3s)",
-            "run_h05": "run_h05 · Weekly active editors [30.0s] — PASS (Gap -0.4s)",
+            "run_h02": "run_h02 · New customer sources [20.0s] — PASS (Gap -2.9s)",
+            "run_h05": "run_h05 · New customer sources [30.0s] — PASS (Gap -2.1s)",
             "run_h03": "run_h03 · Monthly sales [20.0s] — PASS (Gap -1.2s)",
             "run_h06": "run_h06 · Monthly sales [30.0s] — PASS (Gap -0.8s)"
         }
@@ -555,8 +556,15 @@ with col_right:
         target_sec = float(final_att.get("target", target_seconds))
         measured_sec = float(final_att.get("measured", 0.0))
         gap = float(final_att.get("gap", 0.0))
-        is_pass = abs(gap) <= 3.0 and res.get("status") == "PASS"
         audio_path = final_att.get("audio_path", "")
+        # Same gate that feeds st.download_button — shared with holdout export/verify
+        download_bytes = delivery.get_download_bytes(
+            status=res.get("status", ""),
+            measured_seconds=measured_sec,
+            target_seconds=target_sec,
+            audio_path=audio_path,
+        )
+        is_pass = download_bytes is not None
 
         # Verdict Banner
         if is_pass:
@@ -599,15 +607,12 @@ with col_right:
         </div>
         """, unsafe_allow_html=True)
 
-        # Gated Audio Delivery
-        if is_pass and audio_path and os.path.exists(audio_path):
-            with open(audio_path, "rb") as af:
-                audio_bytes = af.read()
-            
-            st.audio(audio_bytes, format="audio/mp3")
+        # Gated Audio Delivery — bytes come only from delivery.get_download_bytes
+        if download_bytes is not None:
+            st.audio(download_bytes, format="audio/mp3")
             st.download_button(
                 label="■ DOWNLOAD AUDIO (.MP3)",
-                data=audio_bytes,
+                data=download_bytes,
                 file_name=f"{res.get('slide_id', 'slide')}_narration.mp3",
                 mime="audio/mp3",
                 use_container_width=True
