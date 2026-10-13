@@ -33,11 +33,87 @@ Do not say "this slide", "as you can see" or "in this image".
 Do not read out axis labels, legends or every number one by one.
 Return only the script text, with nothing before or after it."""
 
-REWRITE_PROMPT_TEMPLATE = """Rewrite this voiceover script in about {target_words} words.
-Keep the chart or main picture first. Keep the same facts and numbers.
+REWRITE_PROMPT_TEMPLATE = """Rewrite this voiceover script to reach {target_words} words.
+Keep the chart or main picture first. Elaborate on the trends, context, and implications to hit the target word count.
 Return only the script text.
 
 Script: {script}"""
+
+ENTAILMENT_AUDITOR_PROMPT = """You are an objective factual integrity auditor for slide voiceovers.
+Inspect the attached slide image (charts, data points, title, and bullet text).
+Evaluate each sentence of the draft voiceover script below.
+
+Evaluation Criteria:
+- GROUNDED: Every claim, metric, and entity in the sentence is directly readable or visible on the slide.
+- UNGROUNDED: The sentence introduces claims about future outlook, company strategy, market conditions, or speculative implications that appear nowhere on the slide.
+
+Draft Sentences:
+{sentences_json}
+
+Return valid JSON only, using this schema:
+{{
+  "evaluations": [
+    {{
+      "sentence": "<exact sentence>",
+      "verdict": "GROUNDED" | "UNGROUNDED",
+      "reason": "<concise explanation referencing slide content>"
+    }}
+  ],
+  "overall_verdict": "PASS" | "FAIL"
+}}"""
+
+
+def split_into_sentences(text: str) -> list:
+    import re
+    sentences = re.split(r'(?<=[.!?])\s+', text.strip())
+    return [s.strip() for s in sentences if s.strip()]
+
+
+def audit_factual_entailment(image_b64: str, script: str) -> dict:
+    """Evaluate candidate script against slide image for ungrounded claims before audio synthesis."""
+    sentences = split_into_sentences(script)
+    prompt = ENTAILMENT_AUDITOR_PROMPT.format(sentences_json=json.dumps(sentences, indent=2))
+    payload = {
+        "model": OPENROUTER_MODEL,
+        "messages": [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": prompt},
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": f"data:image/png;base64,{image_b64}"}
+                    }
+                ]
+            }
+        ],
+        "temperature": 0.0,
+        "response_format": {"type": "json_object"}
+    }
+    headers = {
+        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+        "Content-Type": "application/json",
+        "HTTP-Referer": "https://github.com/Poojan2107/tts-rate-calibration",
+        "X-Title": "Entailment Gate"
+    }
+    req = urllib.request.Request(
+        OPENROUTER_URL,
+        data=json.dumps(payload).encode("utf-8"),
+        headers=headers,
+        method="POST"
+    )
+    with urllib.request.urlopen(req, timeout=30) as response:
+        res_data = json.loads(response.read().decode("utf-8"))
+        res_content = json.loads(res_data["choices"][0]["message"]["content"].strip())
+        ungrounded = [
+            item["sentence"] for item in res_content.get("evaluations", [])
+            if item.get("verdict") == "UNGROUNDED"
+        ]
+        return {
+            "overall_verdict": res_content.get("overall_verdict", "FAIL"),
+            "ungrounded_sentences": ungrounded,
+            "evaluations": res_content.get("evaluations", [])
+        }
 
 
 def check_configuration():
@@ -160,6 +236,50 @@ async def process_slide(slide_row: dict) -> dict:
         audio_path = os.path.join(AUDIO_DIR, audio_filename)
 
         try:
+            # Pre-Synthesis Factual Entailment Gate
+            print(f"\n[Attempt {attempt_idx + 1}] Auditing factual entailment against slide image...")
+            audit_result = audit_factual_entailment(base64_image, current_script)
+            for idx, item in enumerate(audit_result.get("evaluations", []), 1):
+                print(f"  Sentence {idx} [{item.get('verdict')}]: \"{item.get('sentence')}\"")
+                if item.get("verdict") == "UNGROUNDED":
+                    print(f"    --> Flagged: {item.get('reason')}")
+
+            if audit_result["overall_verdict"] == "FAIL":
+                ungrounded_str = "; ".join(audit_result["ungrounded_sentences"])
+                print(f"--> [FACTUAL ENTAILMENT GATE: FAIL] Ungrounded claims detected.")
+                attempt_record = {
+                    "attempt": attempt_idx + 1,
+                    "script": current_script,
+                    "rate": rate_str,
+                    "target": target_seconds,
+                    "measured": 0.0,
+                    "gap": 0.0,
+                    "verdict": "FAIL (UNGROUNDED)",
+                    "audio_path": ""
+                }
+                attempts.append(attempt_record)
+                if attempt_idx < MAX_RETRIES:
+                    print("Action: Re-prompting rewrite to eliminate ungrounded speculation...")
+                    rewrite_prompt = (
+                        f"Rewrite this voiceover script to reach about {target_words} words.\n"
+                        f"Keep the chart first. The previous version was rejected for ungrounded claims: {ungrounded_str}.\n"
+                        f"Do not add external predictions, future outlook, or corporate commentary. Expand by describing visible chart data points, coordinates, and trajectories in detail.\n"
+                        f"Return only the script text.\n\nScript: {current_script}"
+                    )
+                    rewrite_messages = [{"role": "user", "content": rewrite_prompt}]
+                    current_script = call_openrouter(rewrite_messages)
+                    continue
+                else:
+                    print(f"--> Result: Factual integrity audit failed on final attempt ({MAX_RETRIES} retries). Blocking download.")
+                    return {
+                        "slide_id": slide_id,
+                        "status": "FAIL",
+                        "attempts": attempts,
+                        "final_attempt": attempt_record
+                    }
+            else:
+                print("--> [FACTUAL ENTAILMENT GATE: PASS] All claims grounded in slide visual/text.")
+
             measured_length = await generate_speech_audio(
                 text=current_script,
                 output_path=audio_path,
@@ -215,10 +335,13 @@ async def process_slide(slide_row: dict) -> dict:
                     print(f"Action: Rate nudge -> Slowing down to {rate_to_string(rate_offset)}")
             else:
                 # Step 2: Model Rewrite
-                rate_offset = 0
+                # Compute baseline gap at +0% rate (the rate the rewrite will actually be spoken at)
                 current_words = len(current_script.split())
-                new_target = max(10, current_words - round(gap * CALIBRATED_WPS))
-                print(f"Action: Model rewrite -> Current words: {current_words}, New target: {new_target}")
+                baseline_duration = measured_length * (1.0 + rate_offset / 100.0)
+                baseline_gap = round(baseline_duration - target_seconds, 1)
+                new_target = max(10, current_words - round(baseline_gap * CALIBRATED_WPS))
+                rate_offset = 0
+                print(f"Action: Model rewrite -> Current words: {current_words}, Baseline at +0%: {baseline_duration:.1f}s (gap {baseline_gap:+.1f}s), New target: {new_target}")
 
                 rewrite_prompt = REWRITE_PROMPT_TEMPLATE.format(
                     target_words=new_target,
@@ -261,7 +384,7 @@ async def process_slide(slide_row: dict) -> dict:
 async def main():
     check_configuration()
 
-    selected_slides = ["slide-01", "slide-02", "slide-03"]
+    selected_slides = ["slide-01"]
     slides_data = []
 
     with open(CSV_PATH, mode="r", encoding="utf-8") as f:

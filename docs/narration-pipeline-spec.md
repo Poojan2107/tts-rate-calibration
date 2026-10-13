@@ -37,7 +37,7 @@ Each recoverable failure type is explicitly identified and spends from the retry
 
 1. **Timing Miss (`abs(gap) > 3.0s`):**
    - **Step 1 (Edge-TTS Rate Nudge):** Keep exact same script. Shift rate by 10 points (`+10%` if gap > +3.0s, `-10%` if gap < -3.0s). Bounded to `±20%` from `+0%` (max 2 attempts).
-   - **Step 2 (Model Rewrite):** If rate nudges miss, reset rate to `+0%` and prompt model with new target: `new_target_words = current_words - round(gap × 2.73)` (max 2 attempts).
+   - **Step 2 (Model Rewrite):** If rate nudges miss, reset rate to `+0%` and prompt model with new target normalized to the baseline `+0%` speaking rate: `baseline_duration = measured_length × (1.0 + rate_offset / 100.0)`, `baseline_gap = baseline_duration - target_seconds`, `new_target_words = max(10, current_words - round(baseline_gap × 2.73))` (max 2 attempts).
 2. **Network / Socket Timeout (`TimeoutError`, `aiohttp.ServerDisconnectedError`):**
    - Immediate re-fetch attempt using identical script and rate setting.
 3. **Empty Output (`file_size == 0`):**
@@ -49,8 +49,8 @@ Each recoverable failure type is explicitly identified and spends from the retry
 
 ### Rewrite Prompt (verbatim):
 ```
-Rewrite this voiceover script in about {target_words} words.
-Keep the chart or main picture first. Keep the same facts and numbers.
+Rewrite this voiceover script to reach {target_words} words.
+Keep the chart or main picture first. Elaborate on the trends, context, and implications to hit the target word count.
 Return only the script text.
 
 Script: {script}
@@ -67,6 +67,8 @@ Script: {script}
 |---|---|
 | **Timing Pass** | `abs(gap) <= 3.0 seconds` (i.e. `-3.0s <= gap <= +3.0s` inclusive). |
 | **Measurement Standard** | Real duration measured using `mutagen.mp3.MP3(path).info.length`, rounded to 0.1s. Word count estimations are never used for pass/fail decisions. |
+| **Factual Entailment Gate** | Pre-synthesis check: Every sentence in the candidate script must be grounded in the slide image. Unverified corporate speculation (future outlook, unsourced market conditions) triggers a FAIL. |
+| **Factual Gate Behavior** | On FAIL during retries: re-prompt with targeted negative feedback specifying ungrounded claims. On final attempt: mark run FAILED and block download. |
 | **Coverage Pass** | The generated script accurately states the slide's `key_visual_point` (matching direction, trend, and numeric facts). |
 | **Coverage Evaluation** | Evaluated post-run against `key_visual_point`. This truth value is never leaked to the vision prompt. |
 | **Audit Logging** | All attempts and verdicts are permanently logged to the results table (`slide_id`, `target_length_seconds`, `measured_seconds`, `gap_seconds`, `retries_used`, `timing_verdict`, `coverage_verdict`). |
@@ -75,7 +77,8 @@ Script: {script}
 
 | Condition | Behavior |
 |---|---|
-| **Timing Pass** | The **Download** button appears for the passed MP3, displaying the measured length and target length side by side. |
+| **Timing & Factual Pass** | The **Download** button appears for the passed MP3, displaying the measured length and target length side by side. |
 | **In-Progress / Pre-Pass** | The audio player is enabled so the user can listen to intermediate attempts, but the **Download** button is hidden. |
+| **Factual Entailment Failure** | If ungrounded claims cannot be eliminated within the retry limit, the **Download** button is permanently suppressed. |
 | **Final Failure (Limit Reached)** | The **Download** button never appears. The failure warning message is displayed. |
-| **Coverage Failure with Timing Pass** | If the audio passes timing (`abs(gap) <= 3.0s`) but fails coverage grading, the **Download** button still appears, and the results table logs `coverage_verdict = FAIL`. |
+| **Coverage Failure with Timing Pass** | If the audio passes timing (`abs(gap) <= 3.0s`) and factual entailment but fails downstream coverage grading, the **Download** button appears, and the results table logs `coverage_verdict = FAIL`. |
