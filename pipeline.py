@@ -251,6 +251,7 @@ async def process_slide(slide_row: dict, force_short_draft: bool = False) -> dic
         print(f"Calling OpenRouter ({OPENROUTER_MODEL}) with slide image...")
         script = call_openrouter(messages)
     rate_offset = 0
+    attempts_since_rewrite = 0
     current_script = script
     attempts = []
 
@@ -291,6 +292,8 @@ async def process_slide(slide_row: dict, force_short_draft: bool = False) -> dic
                     )
                     rewrite_messages = [{"role": "user", "content": rewrite_prompt}]
                     current_script = call_openrouter(rewrite_messages)
+                    rate_offset = 0
+                    attempts_since_rewrite = 0
                     continue
                 else:
                     print(f"--> Result: Factual integrity audit failed on final attempt ({MAX_RETRIES} retries). Blocking download.")
@@ -348,14 +351,15 @@ async def process_slide(slide_row: dict, force_short_draft: bool = False) -> dic
 
             print(f"--> Gap exceeds ±{TARGET_TOLERANCE}s. Applying retry rule...")
 
-            # Step 1: Edge-TTS Rate Nudge (up to 2 tries: attempt 0->1, 1->2)
-            if attempt_idx < 2 and abs(rate_offset) < 20:
+            # Step 1: Edge-TTS Rate Nudge (up to 2 tries on current script)
+            if attempts_since_rewrite < 2 and abs(rate_offset) < 20:
                 if gap > TARGET_TOLERANCE:
                     rate_offset += 10
                     print(f"Action: Rate nudge -> Speeding up to {rate_to_string(rate_offset)}")
                 else:
                     rate_offset -= 10
                     print(f"Action: Rate nudge -> Slowing down to {rate_to_string(rate_offset)}")
+                attempts_since_rewrite += 1
             else:
                 # Step 2: Model Rewrite
                 # Compute baseline gap at +0% rate (the rate the rewrite will actually be spoken at)
@@ -364,6 +368,7 @@ async def process_slide(slide_row: dict, force_short_draft: bool = False) -> dic
                 baseline_gap = round(baseline_duration - target_seconds, 1)
                 new_target = max(10, current_words - round(baseline_gap * CALIBRATED_WPS))
                 rate_offset = 0
+                attempts_since_rewrite = 0
                 print(f"Action: Model rewrite -> Current words: {current_words}, Baseline at +0%: {baseline_duration:.1f}s (gap {baseline_gap:+.1f}s), New target: {new_target}")
 
                 rewrite_prompt = REWRITE_PROMPT_TEMPLATE.format(

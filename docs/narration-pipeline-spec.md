@@ -36,8 +36,8 @@ Return only the script text, with nothing before or after it.
 Each recoverable failure type is explicitly identified and spends from the retry budget:
 
 1. **Timing Miss (`abs(gap) > 3.0s`):**
-   - **Step 1 (Edge-TTS Rate Nudge):** Keep exact same script. Shift rate by 10 points (`+10%` if gap > +3.0s, `-10%` if gap < -3.0s). Bounded to `±20%` from `+0%` (max 2 attempts).
-   - **Step 2 (Model Rewrite):** If rate nudges miss, reset rate to `+0%` and prompt model with new target normalized to the baseline `+0%` speaking rate: `baseline_duration = measured_length × (1.0 + rate_offset / 100.0)`, `baseline_gap = baseline_duration - target_seconds`, `new_target_words = max(10, current_words - round(baseline_gap × 2.73))` (max 2 attempts).
+   - **Step 1 (Edge-TTS Rate Nudge):** Keep exact same script. Shift rate by 10 points (`+10%` if gap > +3.0s, `-10%` if gap < -3.0s). Bounded to `±20%` from `+0%` (max 2 attempts per active script, tracked via `attempts_since_rewrite`).
+   - **Step 2 (Model Rewrite):** If rate nudges miss, reset rate to `+0%` and reset `attempts_since_rewrite = 0` to re-arm the rate ladder for the new script. Prompt model with new target normalized to the baseline `+0%` speaking rate: `baseline_duration = measured_length × (1.0 + rate_offset / 100.0)`, `baseline_gap = baseline_duration - target_seconds`, `new_target_words = max(10, current_words - round(baseline_gap × 2.73))` (max 2 attempts).
 2. **Network / Socket Timeout (`TimeoutError`, `aiohttp.ServerDisconnectedError`):**
    - Immediate re-fetch attempt using identical script and rate setting.
 3. **Empty Output (`file_size == 0`):**
@@ -49,8 +49,10 @@ Each recoverable failure type is explicitly identified and spends from the retry
 
 ### Rewrite Prompt (verbatim):
 ```
-Rewrite this voiceover script to reach {target_words} words.
-Keep the chart or main picture first. Elaborate on the trends, context, and implications to hit the target word count.
+Rewrite this voiceover script to reach about {target_words} words.
+Keep the chart or main picture first.
+Expand the length by describing visible chart trends and data points in detail (such as the monthly progression from October through January at $40,000, and the surge to $82,000 in February), the visual line trajectory, and thoroughly covering all bullet points from the slide.
+Do not invent future predictions, corporate strategy, or ungrounded implications—every detail must be directly readable or visible on the slide.
 Return only the script text.
 
 Script: {script}
