@@ -65,7 +65,7 @@ Return valid JSON only, using this schema:
 
 def split_into_sentences(text: str) -> list:
     import re
-    sentences = re.split(r'(?<=[.!?])\s+', text.strip())
+    sentences = re.split(r'(?<=[.!?]["\'])\s+|(?<=[.!?])\s+', text.strip())
     return [s.strip() for s in sentences if s.strip()]
 
 

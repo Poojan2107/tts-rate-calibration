@@ -642,20 +642,33 @@ slide-01   | 30.0s   | 29.9s     | -0.1s   | 2        | PASS
 ------------------------------------------------------------
 ```
 
-#### Run Analysis & Answer to the Retry Question:
+#### Run Analysis & Clarifications:
 - **Final Script:** *"Monthly template marketplace sales were steady around $40,000 from October through January. Then, sales jumped significantly to $82,000 in February. This presentation covers 'Sales Momentum This Season.' Key points include revenue growth across all regions, with pro upgrades driving the February surge, and the team expanding to twelve members."*
-- **Sentence-Level Audit:** 3/3 sentences rated `GROUNDED` by the visual entailment gate.
+- **Sentence-Level Audit & Splitter Regex Fix:** 
+  The three-row audit shown in the log above was copied verbatim from the terminal output. The terminal printed three rows instead of four due to a regex lookbehind limitation in `pipeline.py`:
+  ```python
+  # Initial implementation:
+  re.split(r'(?<=[.!?])\s+', text.strip())
+  ```
+  Because sentence 3 ended with a period inside a closing quotation mark (`covers "Sales Momentum This Season." Key points include...`), the lookbehind `(?<=[.!?])` inspected `"` instead of `.`, failed to match the split point, and merged sentences 3 and 4 into a single string.
+  We updated the sentence splitter to handle closing quotes:
+  ```python
+  # Corrected implementation:
+  re.split(r'(?<=[.!?]["\'])\s+|(?<=[.!?])\s+', text.strip())
+  ```
+  When split properly into distinct sentences, all four evaluate as `GROUNDED`:
+  1. *"Monthly template marketplace sales were steady around $40,000 from October through January."* [GROUNDED - matches line chart values Oct–Jan]
+  2. *"Then, sales jumped significantly to $82,000 in February."* [GROUNDED - matches line chart spike in Feb]
+  3. *"This presentation covers "Sales Momentum This Season.""* [GROUNDED - matches slide title]
+  4. *"Key points include revenue growth across all regions, with pro upgrades driving the February surge, and the team expanding to twelve members."* [GROUNDED - matches slide bullet text]
 - **Timing Gate:** Measured length 29.9s vs 30.0s target (`gap = -0.1s`).
 - **Retries Used:** 2 retries (Rate Nudges to -10% and -20%).
 
-##### Does the retry rewrite prompt actually reach 30s with only grounded sentences, or does it run out of retries?
-Here is the core empirical truth:
-1. **How this run passed:** The vision model produced a 52-word draft. At 52 words, the Edge-TTS rate slowdown to -20% stretched the audio to **29.9 seconds**, cleanly passing on Attempt 3 without triggering a model rewrite.
-2. **What happens if forced into the model rewrite path (e.g., from a 45-word draft):**
-   When the rewrite model is given negative feedback forbidding external corporate commentary, **it cannot reach 82 words**. Testing the negative-feedback rewrite prompt on the 45-word draft yields only **45 words (23.4s at +0%)**. 
-   Because `slide-01` contains only three short bullet points and a simple line chart, there are not enough visible facts on the slide to sustain 82 words without repetition.
-3. **The Trade-Off Boundary:**
-   If a concise script enters Step 2 (Model Rewrite) at +0% rate under strict factual containment:
-   - If it obeys the negative prompt, it refuses to add speculation and caps out at ~45 words (failing timing with a -6.6s gap).
-   - If it attempts to hit 82 words, it invents ungrounded filler, which the entailment gate rejects.
-   - **Consequently, under strict factual containment without rate slowing, the rewrite path runs out of retries and blocks the download.** The only reason `slide-01` passes with 100% grounded facts is because Edge-TTS rate nudges (-20%) stretch a 52-word script across the 30-second finish line.
+##### Does the retry rewrite prompt reach 30s with only grounded sentences, or does it run out of retries?
+Here is what the evidence actually shows:
+1. **How this run passed:** The initial vision model produced a 52-word draft. At 52 words, Edge-TTS rate slowing to -20% brought audio duration to **29.9 seconds**, passing cleanly on Attempt 3 without triggering a model rewrite.
+2. **The 76-Word Rewrite Target vs. 82-Word Baseline:**
+   The initial baseline word target for a 30.0s slide at +0% rate is 82 words ($30.0 \times 2.73 \approx 82$). When calculating the target for a model rewrite from a timing miss, the normalized target formula yielded **76 words** for the rerun draft ($47 - \text{round}(-10.7 \times 2.73) = 76$) and **70 words** for the original 45-word draft.
+3. **Observed Behavior on the Rewrite Path:**
+   In our single test call evaluating the negative-feedback rewrite prompt against the 45-word draft targeting 76 words, the model returned 45 words (23.4s at baseline speed), declining to invent facts not present on the slide. However, this is an observation from a single test call, not a multi-seed, 4-retry simulation. We cannot claim a deterministic exhaustion of all 4 retries without running repeated trials across multiple random seeds.
+   What is empirically established is that `slide-01` passed timing entirely through the -20% rate nudge on a 52-word grounded draft, and that prompt-level negative feedback makes length expansion without speculation difficult on concise slides.
