@@ -973,7 +973,7 @@ python verify_holdout_runs.py
 
 | Run ID | Slide ID | Target | Re-measured length | Gap | Retries | Key-point verdict | Mutagen file |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **`run_h01`** | `slide_11` | 30.0s | None (no download) | +7.2s (diagnostic) | 4 | **N/A** (download locked) | - |
+| **`run_h01`** | `slide_11` | 30.0s | None (no download) | +7.2s (diagnostic) | 4 | **YES** | - |
 | **`run_h02`** | `slide_14` | 20.0s | 17.1s | -2.9s | 0 | **YES** | [`downloads/run_h02.mp3`](downloads/run_h02.mp3) |
 | **`run_h03`** | `slide_15` | 20.0s | 18.8s | -1.2s | 0 | **YES** | [`downloads/run_h03.mp3`](downloads/run_h03.mp3) |
 | **`run_h04`** | `slide_11` | 20.0s | 19.8s | -0.2s | 0 | **YES** | [`downloads/run_h04.mp3`](downloads/run_h04.mp3) |
@@ -991,7 +991,7 @@ Coverage verdicts are derived from script text via [verify_holdout_runs.py](veri
   - `run_h04` Script: *"The bar chart shows paid seats by plan from January to March 2025. The Teams plan grew from zero seats to 15,000, becoming the second-largest plan. Pro seats increased across the quarter. The Teams plan launched in February, and Enterprise pilots are in four regions."*
   - **Verdict: YES (Covered).** Explicitly names the growth from zero to 15,000 seats and becoming the second-largest plan ahead of Enterprise.
   - `run_h01` Script: *"The bar chart displays paid seats by plan from January to March 2025... Teams plan... shows zero seats in January, then jumped to 6,000 seats in February and 15,000 seats in March. This rapid growth made the Teams plan the second-largest plan by March."*
-  - **Verdict: N/A (Delivery Locked).** Timing gate aborted delivery after 4 retries (`audio_file: null`); no MP3 was shipped to the presenter.
+  - **Verdict: YES (Covered).** Script states zero→15,000 growth and becoming the second-largest plan. Timing still failed after 4 retries, so no MP3 was shipped (Mutagen file column is `-`).
 
 - **`slide_14` (`run_h02` & `run_h05`):**
   - *Key Visual Point:* *"Almost half of new customers found the bakery through Instagram posts"*

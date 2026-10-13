@@ -595,13 +595,13 @@ with col_right:
         </div>
         """, unsafe_allow_html=True)
 
-        # Editorial Script Box
+        # Editorial Script Box — word count only here; trusted duration is MEASURED above
         words = len(final_script.split())
         st.markdown(f"""
         <div class="script-editorial-neo">
             <div class="script-meta-neo">
                 <span>TRANSCRIPT</span>
-                <span>{words} WORDS // ~{words / 2.73:.1f}S AT 2.73 WPS</span>
+                <span>{words} WORDS</span>
             </div>
             <div class="script-body-neo">"{final_script}"</div>
         </div>

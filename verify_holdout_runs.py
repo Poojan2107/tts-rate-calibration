@@ -225,8 +225,11 @@ def verify_holdout_runs():
             and str(download_source).startswith("browser click")
         )
 
+        # Key-point coverage is always judged from the script text (YES/NO), even if locked.
+        cov_verdict, cov_notes = evaluate_key_point_coverage(slide_id, script)
+
         if credited:
-            # Mutagen opens the button-click file under downloads/<run_id>/
+            # Mutagen opens the button-click file downloads/<run_id>.mp3
             mutagen_sec = round(MP3(browser_path).info.length, 1)
             gap = round(mutagen_sec - target, 1)
             measured_str = f"{mutagen_sec:.1f}s"
@@ -234,7 +237,6 @@ def verify_holdout_runs():
             timing_verdict = "PASS" if abs(gap) <= 3.0 else "FAIL"
             download_col = "button click"
             file_col = f"`{browser_path.replace(chr(92), '/')}`"
-            cov_verdict, cov_notes = evaluate_key_point_coverage(slide_id, script)
             downloaded_label = browser_path
         else:
             measured_str = "None (no download)"
@@ -243,8 +245,6 @@ def verify_holdout_runs():
             timing_verdict = "FAIL (retry limit reached)"
             download_col = "locked (no button)"
             file_col = "-"
-            cov_verdict = "N/A"
-            cov_notes = "delivery locked / no browser download"
             downloaded_label = "N/A (download hidden)"
             if browser_path and not str(browser_path).replace("\\", "/").startswith("downloads/"):
                 print(
@@ -290,8 +290,6 @@ def verify_holdout_runs():
     for row in table_rows:
         if row["coverage_verdict"] == "NO":
             cov_display = f"**NO** ({row['coverage_notes']})"
-        elif row["coverage_verdict"] == "N/A":
-            cov_display = "**N/A** (delivery locked)"
         else:
             cov_display = "**YES**"
 

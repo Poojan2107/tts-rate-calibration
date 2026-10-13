@@ -738,16 +738,16 @@ In this milestone, the slide narration pipeline transitions from isolated termin
 
 ### 9.2 Holdout Results Table
 
-Aligned with the README holdout table. Measured lengths are app-download bytes only; locked runs show `None (no download)`.
+Aligned with the README holdout table. Re-measured lengths come only from `downloads/<run_id>.mp3` (browser button clicks). `holdout_audio/` never counts. Locked runs show `None (no download)` for length but still get a YES/NO key-point verdict from the script text.
 
-| Run ID | Slide ID | Slide Title | Target Length | Measured Download Length | Gap | Retries | Key Visual Point (Ground Truth) | Coverage Verdict | Timing Verdict | Gated Download |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **`run_h01`** | `slide_11` | Paid seats by plan | 30.0s | None (no download) | +7.2s (diagnostic) | 4 | *The new Teams plan grew from zero to 15,000 seats in two months, passing Enterprise* | **N/A** (delivery locked) | **FAIL (retry limit reached)** | ⛔ **Locked (Hidden)** |
-| **`run_h02`** | `slide_14` | Where Lena's new customers come from | 20.0s | 17.1s | -2.9s | 0 | *Almost half of new customers found the bakery through Instagram posts* | **YES** | **PASS** | ⬇️ **Unlocked (Downloaded)** |
-| **`run_h03`** | `slide_15` | Monthly sales since September | 20.0s | 18.8s | -1.2s | 0 | *Sales jumped about 50% when the catering menu launched in December and stayed at that higher level* | **YES** | **PASS** | ⬇️ **Unlocked (Downloaded)** |
-| **`run_h04`** | `slide_11` | Paid seats by plan | 20.0s | 19.8s | -0.2s | 0 | *The new Teams plan grew from zero to 15,000 seats in two months, passing Enterprise* | **YES** | **PASS** | ⬇️ **Unlocked (Downloaded)** |
-| **`run_h05`** | `slide_14` | Where Lena's new customers come from | 30.0s | 27.9s | -2.1s | 0 | *Almost half of new customers found the bakery through Instagram posts* | **YES** | **PASS** | ⬇️ **Unlocked (Downloaded)** |
-| **`run_h06`** | `slide_15` | Monthly sales since September | 30.0s | 29.2s | -0.8s | 0 | *Sales jumped about 50% when the catering menu launched in December and stayed at that higher level* | **YES** | **PASS** | ⬇️ **Unlocked (Downloaded)** |
+| Run ID | Slide ID | Target | Re-measured length | Gap | Retries | Key-point verdict | Mutagen file |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **`run_h01`** | `slide_11` | 30.0s | None (no download) | +7.2s (diagnostic) | 4 | **YES** | - |
+| **`run_h02`** | `slide_14` | 20.0s | 17.1s | -2.9s | 0 | **YES** | [`downloads/run_h02.mp3`](../downloads/run_h02.mp3) |
+| **`run_h03`** | `slide_15` | 20.0s | 18.8s | -1.2s | 0 | **YES** | [`downloads/run_h03.mp3`](../downloads/run_h03.mp3) |
+| **`run_h04`** | `slide_11` | 20.0s | 19.8s | -0.2s | 0 | **YES** | [`downloads/run_h04.mp3`](../downloads/run_h04.mp3) |
+| **`run_h05`** | `slide_14` | 30.0s | 27.9s | -2.1s | 0 | **YES** | [`downloads/run_h05.mp3`](../downloads/run_h05.mp3) |
+| **`run_h06`** | `slide_15` | 30.0s | 29.2s | -0.8s | 0 | **YES** | [`downloads/run_h06.mp3`](../downloads/run_h06.mp3) |
 
 ### 9.3 Detailed Analysis of Holdout Runs
 
@@ -756,15 +756,15 @@ Aligned with the README holdout table. Measured lengths are app-download bytes o
 - **Target Words:** $\text{round}(30 \times 2.73) = 82\text{ words}$.
 - **Execution Trace:** Initial draft produced 55 words running 22.8s (gap -7.2s). Rate ladder slowed by -10% (25.1s) and -20% (27.2s). Model rewrite was triggered to expand to 82 words; the expanded script reached 87 words. At +0% speed, Edge-TTS measured **37.2s (gap +7.2s)**. Retries exhausted at retry limit 4.
 - **Timing Verdict:** `FAIL` (`gap = +7.2s` exceeds $\pm 3.0\text{s}$).
-- **App Behavior:** Download button strictly suppressed (`audio_file: null`). Nothing shipped to the presenter.
-- **Key Visual Point Coverage:** **N/A (delivery locked).** Diagnostic draft mentioned zero→15k and second-largest, but coverage is not credited when no download is unlocked.
+- **App Behavior:** Download button strictly suppressed. Nothing shipped to the presenter (`browser_download_path: null`).
+- **Key Visual Point Coverage:** **YES**. Script states zero seats → 15,000 and becoming the second-largest plan. Coverage is judged from script text even when the download is locked.
 
 #### Run 2 (`run_h02`: `slide_14` @ 20.0s Target) — Pass Case
 - **Slide Graphic:** `slide_14_new_customer_sources_pie.png` (Pie: Instagram 45%, walk-ins 25%, word of mouth 20%, flyers 10%).
 - **Target Words:** $\text{round}(20 \times 2.73) = 55\text{ words}$.
 - **Execution Trace:** Initial draft measured **17.1s (gap -2.9s)** on Attempt 1 at +0% baseline rate.
 - **Timing Verdict:** `PASS` (`gap = -2.9s` within $\pm 3.0\text{s}$). Retries used: 0.
-- **App Behavior:** Download button unlocked; `holdout_audio/run_h02_slide_14.mp3` is the gated download bytes.
+- **App Behavior:** Download button unlocked; browser click saved as `downloads/run_h02.mp3` (that file is what Mutagen measures — not `holdout_audio/`).
 - **Key Visual Point Coverage:** **YES**. Script states Instagram brought in the most customers at 45 percent.
 
 #### Run 3 (`run_h03`: `slide_15` @ 20.0s Target) — Pass Case
@@ -772,7 +772,7 @@ Aligned with the README holdout table. Measured lengths are app-download bytes o
 - **Target Words:** 55 words.
 - **Execution Trace:** Initial draft produced 44 words running **18.8s (gap -1.2s)** on Attempt 1 at +0% baseline rate.
 - **Timing Verdict:** `PASS` (`gap = -1.2s` within $\pm 3.0\text{s}$). Retries used: 0.
-- **App Behavior:** Download button unlocked immediately on Attempt 1.
+- **App Behavior:** Download button unlocked; measured file is `downloads/run_h03.mp3`.
 - **Key Visual Point Coverage:** **YES**. Script states: *"Sales jumped about 50% in December and stayed high through February."*
 
 #### Run 4 (`run_h04`: `slide_11` @ 20.0s Target) — Second Target Length Pass Case
@@ -780,42 +780,46 @@ Aligned with the README holdout table. Measured lengths are app-download bytes o
 - **Target Words:** 55 words.
 - **Execution Trace:** Initial draft produced 47 words running **19.8s (gap -0.2s)** on Attempt 1 at +0% baseline rate.
 - **Timing Verdict:** `PASS` (`gap = -0.2s` within $\pm 3.0\text{s}$). Retries used: 0.
-- **App Behavior:** Download button unlocked immediately with near-perfect slot fit.
+- **App Behavior:** Download button unlocked; measured file is `downloads/run_h04.mp3`.
 - **Key Visual Point Coverage:** **YES**. Script states: *"The Teams plan grew from zero seats to 15,000, becoming the second-largest plan."*
 
 #### Run 5 (`run_h05`: `slide_14` @ 30.0s Target) — Second Length Pass Case
-- **Timing Verdict:** `PASS` (27.9s, gap -2.1s, 0 retries).
+- **Timing Verdict:** `PASS` (27.9s, gap -2.1s, 0 retries). Measured file: `downloads/run_h05.mp3`.
 - **Key Visual Point Coverage:** **YES**. Largest source at 45% from Instagram posts.
 
 #### Run 6 (`run_h06`: `slide_15` @ 30.0s Target) — Second Length Pass Case
-- **Timing Verdict:** `PASS` (29.2s, gap -0.8s, 0 retries).
+- **Timing Verdict:** `PASS` (29.2s, gap -0.8s, 0 retries). Measured file: `downloads/run_h06.mp3`.
 - **Key Visual Point Coverage:** **YES**. States 50% December jump and sustained higher level.
 
 ### 9.4 Independent Verification Output (`verify_holdout_runs.py`)
 ```text
 BROWSER DOWNLOAD MEASUREMENT & KEY VISUAL POINT COVERAGE AUDIT
-Measuring MP3s captured by clicking st.download_button in the live app
+Mutagen opens only downloads/<run_id>.mp3 from a button click capture
 
 [run_h01] Slide: slide_11 | Target: 30.0s
-  Downloaded Audio: N/A (download hidden)
+  Browser file:     N/A (download hidden)
   Measured Length:  None (no download)
-  Coverage Verdict: N/A (delivery locked)
+  Coverage Verdict: YES (Covered: states 0 to 15k growth and becoming second-largest plan ahead of Enterprise)
   Timing Verdict:   FAIL (retry limit reached)
 
 [run_h02] Slide: slide_14 | Target: 20.0s
-  Downloaded Audio: holdout_audio\run_h02_slide_14.mp3
+  Browser file:     downloads/run_h02.mp3
   Measured Length:  17.1s | Gap: -2.9s | Coverage: YES | Timing: PASS
 
 [run_h03] Slide: slide_15 | Target: 20.0s
+  Browser file:     downloads/run_h03.mp3
   Measured Length:  18.8s | Gap: -1.2s | Coverage: YES | Timing: PASS
 
 [run_h04] Slide: slide_11 | Target: 20.0s
+  Browser file:     downloads/run_h04.mp3
   Measured Length:  19.8s | Gap: -0.2s | Coverage: YES | Timing: PASS
 
 [run_h05] Slide: slide_14 | Target: 30.0s
+  Browser file:     downloads/run_h05.mp3
   Measured Length:  27.9s | Gap: -2.1s | Coverage: YES | Timing: PASS
 
 [run_h06] Slide: slide_15 | Target: 30.0s
+  Browser file:     downloads/run_h06.mp3
   Measured Length:  29.2s | Gap: -0.8s | Coverage: YES | Timing: PASS
 ```
 
