@@ -961,7 +961,7 @@ Six experimental runs were executed across the holdout deck (`slide_11`, `slide_
 
 | Run ID | Slide ID | Slide Title | Target Length | Measured Download Length | Gap | Retries | Key Visual Point (Ground Truth) | Coverage Verdict | Timing Verdict | Gated Download |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **`run_h01`** | `slide_11` | Paid seats by plan | 30.0s | None (no download) | +7.2s (diagnostic) | 4 | *The new Teams plan grew from zero to 15,000 seats in two months, passing Enterprise* | **YES** (Covered) | **FAIL (retry limit reached)** | ⛔ **Locked (Hidden)** |
+| **`run_h01`** | `slide_11` | Paid seats by plan | 30.0s | None (no download) | +7.2s (diagnostic) | 4 | *The new Teams plan grew from zero to 15,000 seats in two months, passing Enterprise* | **N/A** (delivery locked) | **FAIL (retry limit reached)** | ⛔ **Locked (Hidden)** |
 | **`run_h02`** | `slide_12` | Weekly active editors, Q1 | 20.0s | 17.7s | -2.3s | 1 | *Active editors climbed about 40% in the six weeks after the week 7 release* | **NO** (Missed: does not mention week 7 release or 40% climb) | **PASS** | ⬇️ **Unlocked (Downloaded)** |
 | **`run_h03`** | `slide_15` | Monthly sales since September | 20.0s | 18.8s | -1.2s | 0 | *Sales jumped about 50% when the catering menu launched in December and stayed at that higher level* | **YES** (Covered) | **PASS** | ⬇️ **Unlocked (Downloaded)** |
 | **`run_h04`** | `slide_11` | Paid seats by plan | 20.0s | 19.8s | -0.2s | 0 | *The new Teams plan grew from zero to 15,000 seats in two months, passing Enterprise* | **YES** (Covered) | **PASS** | ⬇️ **Unlocked (Downloaded)** |
@@ -977,7 +977,7 @@ Rather than using a hardcoded placeholder, each generated script was individuall
   - `run_h04` Script: *"The bar chart shows paid seats by plan from January to March 2025. The Teams plan grew from zero seats to 15,000, becoming the second-largest plan. Pro seats increased across the quarter. The Teams plan launched in February, and Enterprise pilots are in four regions."*
   - **Verdict: YES (Covered).** Explicitly names the growth from zero to 15,000 seats and becoming the second-largest plan ahead of Enterprise.
   - `run_h01` Script: *"The bar chart displays paid seats by plan from January to March 2025... Teams plan... shows zero seats in January, then jumped to 6,000 seats in February and 15,000 seats in March. This rapid growth made the Teams plan the second-largest plan by March."*
-  - **Verdict: YES (Covered).** Captures both the zero-to-15k jump and passing Enterprise; however, the audio missed the delivery window and timed out after 4 retries, so no file was shipped.
+  - **Verdict: N/A (Delivery Locked).** While the unreleased diagnostic draft mentioned the numbers, the timing gate aborted delivery after 4 retries, so no script or audio was ever shipped to the presenter.
 
 - **`slide_12` (`run_h02` & `run_h05`):**
   - *Key Visual Point:* *"Active editors climbed about 40% in the six weeks after the week 7 release"*

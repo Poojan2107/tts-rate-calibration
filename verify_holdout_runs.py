@@ -97,6 +97,8 @@ def verify_holdout_runs():
             gap_str = f"{diagnostic_gap:+.1f}s (diagnostic)"
             timing_verdict = "FAIL (retry limit reached)"
             download_col = "[LOCKED] Download hidden"
+            cov_verdict = "N/A"
+            cov_notes = "delivery locked / no script shipped"
 
         print(f"\n[{run_id}] Slide: {slide_id} | Target: {target:.1f}s")
         print(f"  Downloaded Audio: {audio_file if is_shipped_download else 'N/A (download hidden)'}")
@@ -131,6 +133,8 @@ def verify_holdout_runs():
         cov_badge = f"**{row['coverage_verdict']}**"
         if row['coverage_verdict'] == "NO":
             cov_display = f"**NO** ({row['coverage_notes']})"
+        elif row['coverage_verdict'] == "N/A":
+            cov_display = f"**N/A** (delivery locked)"
         else:
             cov_display = f"**YES**"
 
