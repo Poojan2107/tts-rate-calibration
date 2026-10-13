@@ -50,5 +50,31 @@
     "key_visual_point": "The new Teams plan grew from zero to 15,000 seats in two months, passing Enterprise",
     "script": "The bar chart shows paid seats by plan from January to March 2025. The Teams plan grew from zero seats to 15,000, becoming the second-largest plan. Pro seats increased across the quarter. The Teams plan launched in February, and Enterprise pilots are in four regions.",
     "audio_file": "holdout_audio\\run_h04_slide_11.mp3"
+  },
+  {
+    "run_id": "run_h05",
+    "slide_id": "slide_12",
+    "slide_title": "Weekly active editors, Q1",
+    "target_seconds": 30.0,
+    "measured_seconds": 30.6,
+    "gap": 0.6,
+    "retries_used": 0,
+    "verdict": "PASS",
+    "key_visual_point": "Active editors climbed about 40% in the six weeks after the week 7 release",
+    "script": "The line chart shows weekly active presentation editors in 2025. Activity was flat at around 2.1 million editors for the first six weeks. It then steadily climbed to 2.9 million by week 12. A marker at week 7 indicates the release of 'Magic Write for slides'. Key points include that this metric counts anyone editing a presentation at least once weekly, mobile editors are included from week 3, and early January holiday dips are excluded.",
+    "audio_file": "holdout_audio\\run_h05_slide_12.mp3"
+  },
+  {
+    "run_id": "run_h06",
+    "slide_id": "slide_15",
+    "slide_title": "Monthly sales since September",
+    "target_seconds": 30.0,
+    "measured_seconds": 28.3,
+    "gap": -1.7,
+    "retries_used": 1,
+    "verdict": "PASS",
+    "key_visual_point": "Sales jumped about 50% when the catering menu launched in December and stayed at that higher level",
+    "script": "The bar chart shows monthly sales in USD from September 2024 to February 2025. Sales jumped about 50% in December, reaching $27.4k, and remained at a high level through February 2025, with sales of $30.3k. The catering menu was launched on December 2nd, with the same two staff and no paid advertising.",
+    "audio_file": "holdout_audio\\run_h06_slide_15.mp3"
   }
 ]

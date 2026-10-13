@@ -387,7 +387,7 @@ if os.path.exists(holdout_file_path):
     try:
         with open(holdout_file_path, "r", encoding="utf-8") as hf:
             raw_runs = json.load(hf)
-            ordered_ids = ["run_h04", "run_h01", "run_h02", "run_h03"]
+            ordered_ids = ["run_h04", "run_h01", "run_h02", "run_h05", "run_h03", "run_h06"]
             holdout_runs_data = sorted(raw_runs, key=lambda x: ordered_ids.index(x.get("run_id", "run_h04")) if x.get("run_id") in ordered_ids else 99)
     except Exception as e:
         print(f"Error loading holdout results: {e}")
@@ -415,9 +415,11 @@ with col_left:
     with tab_eval:
         run_labels = {
             "run_h04": "run_h04 · Paid seats by plan [20.0s] — PASS (Gap -0.2s)",
-            "run_h01": "run_h01 · Paid seats by plan [30.0s] — FAIL (Gap +7.2s, Locked)",
+            "run_h01": "run_h01 · Paid seats by plan [30.0s] — FAIL (Retry limit reached, Locked)",
             "run_h02": "run_h02 · Weekly active editors [20.0s] — PASS (Gap -2.3s)",
-            "run_h03": "run_h03 · Monthly sales [20.0s] — PASS (Gap -1.2s)"
+            "run_h05": "run_h05 · Weekly active editors [30.0s] — PASS (Gap +0.6s)",
+            "run_h03": "run_h03 · Monthly sales [20.0s] — PASS (Gap -1.2s)",
+            "run_h06": "run_h06 · Monthly sales [30.0s] — PASS (Gap -1.7s)"
         }
         
         raw_query = st.query_params.to_dict() if hasattr(st.query_params, "to_dict") else {}

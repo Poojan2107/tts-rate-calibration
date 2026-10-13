@@ -955,25 +955,43 @@ To demonstrate that the calibrated pipeline holds up on slides it has never seen
   5. **Retries Used**
 - **Gated Download Policy:** The MP3 download button appears **strictly when `abs(gap) <= 3.0s`**. When retries are exhausted without achieving timing tolerance, the download button is completely hidden/suppressed, and a clear delivery lock alert is displayed.
 
-### 2. Holdout Experiment Results Table
+### 2. Holdout Experiment Results Table (6 Runs: 3 Slides at 2 Lengths Each)
 
-Four runs were executed across holdout slides (`slide_11`, `slide_12`, `slide_15`), covering two distinct target duration values (20.0s and 30.0s), with `slide_11` tested at both lengths:
+Six experimental runs were executed across the holdout deck (`slide_11`, `slide_12`, `slide_15`), evaluating every slide across two distinct presentation target lengths (20.0s and 30.0s). The table below reports the actual downloaded MP3 files delivered through the application's timing gate:
 
-| Run ID | Slide ID | Slide Title | Target Length | Measured Length | Gap | Retries | Key Visual Point (Ground Truth) | Coverage Verdict | Timing Verdict | Gated Download |
+| Run ID | Slide ID | Slide Title | Target Length | Measured Download Length | Gap | Retries | Key Visual Point (Ground Truth) | Coverage Verdict | Timing Verdict | Gated Download |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **`run_h01`** | `slide_11` | Paid seats by plan | 30.0s | 37.2s | +7.2s | 4 | *The new Teams plan grew from zero to 15,000 seats in two months, passing Enterprise* | **COVERED** | **FAIL** | ⛔ **Locked (Hidden)** |
-| **`run_h02`** | `slide_12` | Weekly active editors, Q1 | 20.0s | 17.7s | -2.3s | 1 | *Active editors climbed about 40% in the six weeks after the week 7 release* | **COVERED** | **PASS** | ⬇️ **Unlocked (Visible)** |
-| **`run_h03`** | `slide_15` | Monthly sales since September | 20.0s | 18.8s | -1.2s | 0 | *Sales jumped about 50% when the catering menu launched in December and stayed at that higher level* | **COVERED** | **PASS** | ⬇️ **Unlocked (Visible)** |
-| **`run_h04`** | `slide_11` | Paid seats by plan | 20.0s | 19.8s | -0.2s | 0 | *The new Teams plan grew from zero to 15,000 seats in two months, passing Enterprise* | **COVERED** | **PASS** | ⬇️ **Unlocked (Visible)** |
+| **`run_h01`** | `slide_11` | Paid seats by plan | 30.0s | None (no download) | +7.2s (diagnostic) | 4 | *The new Teams plan grew from zero to 15,000 seats in two months, passing Enterprise* | **YES** (Covered) | **FAIL (retry limit reached)** | ⛔ **Locked (Hidden)** |
+| **`run_h02`** | `slide_12` | Weekly active editors, Q1 | 20.0s | 17.7s | -2.3s | 1 | *Active editors climbed about 40% in the six weeks after the week 7 release* | **NO** (Missed: does not mention week 7 release or 40% climb) | **PASS** | ⬇️ **Unlocked (Downloaded)** |
+| **`run_h03`** | `slide_15` | Monthly sales since September | 20.0s | 18.8s | -1.2s | 0 | *Sales jumped about 50% when the catering menu launched in December and stayed at that higher level* | **YES** (Covered) | **PASS** | ⬇️ **Unlocked (Downloaded)** |
+| **`run_h04`** | `slide_11` | Paid seats by plan | 20.0s | 19.8s | -0.2s | 0 | *The new Teams plan grew from zero to 15,000 seats in two months, passing Enterprise* | **YES** (Covered) | **PASS** | ⬇️ **Unlocked (Downloaded)** |
+| **`run_h05`** | `slide_12` | Weekly active editors, Q1 | 30.0s | 30.6s | +0.6s | 0 | *Active editors climbed about 40% in the six weeks after the week 7 release* | **NO** (Missed: states week 7 release and 2.1M-2.9M climb, but omits explicit 40% rate) | **PASS** | ⬇️ **Unlocked (Downloaded)** |
+| **`run_h06`** | `slide_15` | Monthly sales since September | 30.0s | 28.3s | -1.7s | 1 | *Sales jumped about 50% when the catering menu launched in December and stayed at that higher level* | **YES** (Covered) | **PASS** | ⬇️ **Unlocked (Downloaded)** |
 
 ### 3. Key Visual Point Coverage & Semantic Verification
-Every passing and failing run was checked against its ground-truth key visual point using [verify_holdout_runs.py](verify_holdout_runs.py):
-- **`slide_11` (`run_h04` & `run_h01`):** Key visual point is *"The new Teams plan grew from zero to 15,000 seats in two months, passing Enterprise"*.
-  - `run_h04` (Passing Script): *"The bar chart shows paid seats by plan from January to March 2025. The Teams plan grew from zero seats to 15,000, becoming the second-largest plan. Pro seats increased across the quarter. The Teams plan launched in February, and Enterprise pilots are in four regions."* $\rightarrow$ **COVERED** (explicitly states zero to 15,000 seats and becoming second-largest plan ahead of Enterprise).
-- **`slide_12` (`run_h02`):** Key visual point is *"Active editors climbed about 40% in the six weeks after the week 7 release"*.
-  - Passing Script: *"This chart shows weekly active presentation editors. After staying flat near 2.1 million for the first six weeks, the number steadily climbed to 2.9 million by week 12. This represents weekly active editors for Q1."* $\rightarrow$ **COVERED** (states 2.1M flatline for first 6 weeks and steady climb to 2.9M by week 12, exactly expressing the 40% post-week-6 climb).
-- **`slide_15` (`run_h03`):** Key visual point is *"Sales jumped about 50% when the catering menu launched in December and stayed at that higher level"*.
-  - Passing Script: *"Sales jumped about 50% in December and stayed high through February. This bar chart shows monthly sales in USD from September 2024 to February 2025. Key details include the catering menu launch on December 2nd, the same two staff, and no paid advertising."* $\rightarrow$ **COVERED** (explicitly states 50% jump in December and staying high through February).
+
+Rather than using a hardcoded placeholder, each generated script was individually evaluated against its slide's ground-truth key visual point using the independent audit suite ([verify_holdout_runs.py](verify_holdout_runs.py)):
+
+- **`slide_11` (`run_h01` & `run_h04`):**
+  - *Key Visual Point:* *"The new Teams plan grew from zero to 15,000 seats in two months, passing Enterprise"*
+  - `run_h04` Script: *"The bar chart shows paid seats by plan from January to March 2025. The Teams plan grew from zero seats to 15,000, becoming the second-largest plan. Pro seats increased across the quarter. The Teams plan launched in February, and Enterprise pilots are in four regions."*
+  - **Verdict: YES (Covered).** Explicitly names the growth from zero to 15,000 seats and becoming the second-largest plan ahead of Enterprise.
+  - `run_h01` Script: *"The bar chart displays paid seats by plan from January to March 2025... Teams plan... shows zero seats in January, then jumped to 6,000 seats in February and 15,000 seats in March. This rapid growth made the Teams plan the second-largest plan by March."*
+  - **Verdict: YES (Covered).** Captures both the zero-to-15k jump and passing Enterprise; however, the audio missed the delivery window and timed out after 4 retries, so no file was shipped.
+
+- **`slide_12` (`run_h02` & `run_h05`):**
+  - *Key Visual Point:* *"Active editors climbed about 40% in the six weeks after the week 7 release"*
+  - `run_h02` Script: *"This chart shows weekly active presentation editors. After staying flat near 2.1 million for the first six weeks, the number steadily climbed to 2.9 million by week 12. This represents weekly active editors for Q1."*
+  - **Verdict: NO (Missed).** While the script accurately notes the 2.1M baseline and 2.9M peak, it **never mentions the week 7 release** or the **40% climb rate**.
+  - `run_h05` Script: *"The line chart shows weekly active presentation editors in 2025. Activity was flat at around 2.1 million editors for the first six weeks. It then steadily climbed to 2.9 million by week 12. A marker at week 7 indicates the release of 'Magic Write for slides'..."*
+  - **Verdict: NO (Missed).** It successfully identifies the week 7 release marker and the six-week climb from 2.1M to 2.9M, but omits the explicit 40% relative rate calculation.
+
+- **`slide_15` (`run_h03` & `run_h06`):**
+  - *Key Visual Point:* *"Sales jumped about 50% when the catering menu launched in December and stayed at that higher level"*
+  - `run_h03` Script: *"Sales jumped about 50% in December and stayed high through February. This bar chart shows monthly sales in USD from September 2024 to February 2025. Key details include the catering menu launch on December 2nd, the same two staff, and no paid advertising."*
+  - **Verdict: YES (Covered).** Explicitly states the ~50% December jump, the sustained high level through February, and the December 2nd catering menu launch.
+  - `run_h06` Script: *"The bar chart shows monthly sales in USD from September 2024 to February 2025. Sales jumped about 50% in December, reaching $27.4k, and remained at a high level through February 2025, with sales of $30.3k. The catering menu was launched on December 2nd..."*
+  - **Verdict: YES (Covered).** Explicitly states the 50% jump, sustained sales level, and December 2nd launch.
 
 ### 4. UI Evidence Screenshots
 
@@ -982,5 +1000,5 @@ Every passing and failing run was checked against its ground-truth key visual po
 ![Passing Run Download Button Visible](screenshots/app_pass_download.png)
 
 #### B. Failed Run (Download Button Hidden & Suppressed)
-*Run `run_h01` on `slide_11` at 30.0s target: Mutagen duration 37.2s (`gap = +7.2s`), retries exhausted, timing gate failed, download button suppressed with clear policy failure alert.*
+*Run `run_h01` on `slide_11` at 30.0s target: Diagnostic draft 37.2s (`gap = +7.2s`), retry limit reached (4 retries exhausted), timing gate failed, download button suppressed with clear policy failure alert and no file shipped.*
 ![Failing Run Download Button Hidden](screenshots/app_fail_download_hidden.png)

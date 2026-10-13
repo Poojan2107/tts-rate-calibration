@@ -38,6 +38,20 @@ RUN_CONFIGS = [
         "target_seconds": 20.0,
         "image_file": "slide_11_paid_seats_by_plan_bars.png",
         "note": "Holdout Slide 11 re-run at second target length (20s)"
+    },
+    {
+        "run_id": "run_h05",
+        "slide_id": "slide_12",
+        "target_seconds": 30.0,
+        "image_file": "slide_12_weekly_active_editors_line.png",
+        "note": "Holdout Slide 12 re-run at second target length (30s)"
+    },
+    {
+        "run_id": "run_h06",
+        "slide_id": "slide_15",
+        "target_seconds": 30.0,
+        "image_file": "slide_15_monthly_sales_usd_bars.png",
+        "note": "Holdout Slide 15 re-run at second target length (30s)"
     }
 ]
 
@@ -51,9 +65,17 @@ def load_holdout_metadata():
     return meta
 
 
-async def run_all():
+async def run_all(force: bool = False):
     os.makedirs(AUDIO_OUTPUT_DIR, exist_ok=True)
     meta = load_holdout_metadata()
+    existing_records = {}
+    if os.path.exists("holdout_results.json") and not force:
+        try:
+            with open("holdout_results.json", "r", encoding="utf-8") as f:
+                for item in json.load(f):
+                    existing_records[item["run_id"]] = item
+        except Exception:
+            pass
     results = []
 
     for cfg in RUN_CONFIGS:
@@ -63,6 +85,11 @@ async def run_all():
         img_path = os.path.join(HOLDOUT_DIR, cfg["image_file"])
         slide_info = meta.get(slide_id, {})
         key_visual_point = slide_info.get("key_visual_point", "")
+
+        if run_id in existing_records and os.path.exists(existing_records[run_id].get("audio_file", "")):
+            print(f"Skipping already computed {run_id} (found in holdout_results.json)")
+            results.append(existing_records[run_id])
+            continue
 
         print(f"\n{'='*75}")
         print(f"STARTING {run_id}: {slide_id} | Target: {target_sec}s | {cfg['note']}")
