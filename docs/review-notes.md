@@ -724,3 +724,105 @@ slide-01   | 30.0s   | 32.0s     | +2.0s   | 3        | PASS
    `slide-01` is now verified to pass under two distinct operational pathways:
    - **Live Production Path (Section 7):** Passed at **27.2s** (`gap = -2.8s`, 2 retries) where the initial multimodal vision model produced a 45-word draft that the Edge-TTS rate ladder brought within tolerance at -20% speed on Attempt 3, bypassing the rewrite step.
    - **Forced Rewrite Path (Section 8 Test 2):** Passed at **32.0s** (`gap = +2.0s`, 3 retries) where the concise draft was pushed past the rate ladder to exercise Step 2 model rewrite with mathematical baseline normalization (`new_target = 70 words`), expanding to 65 grounded words at +0% baseline speed on Attempt 4.
+
+---
+
+## 9. Holdout Slide Generalization & Streamlit App Production Delivery
+
+### 9.1 Overview & Objective
+In this milestone, the slide narration pipeline transitions from isolated terminal scripts to a production-grade interactive application for presentation designers:
+1. **Interactive Streamlit Web App (`app.py`):** Single-slide uploader/selector, target duration control, real-time pipeline execution, 5 visible post-run metrics, and strictly gated audio download delivery.
+2. **Holdout Slide Rendering (`render_holdout_slides.py`):** Programmatically drew slides from [Holdout Slide Rows CSV.csv](../Holdout%20Slide%20Rows%20CSV.csv) into visual slide images incorporating slide title, body text, and chart data summary.
+3. **Generalization Testing Across Fresh Slides:** Evaluated slides never seen by the pipeline (`slide_11`, `slide_12`, `slide_15`) across two distinct target durations (20.0s and 30.0s), testing `slide_11` at both lengths.
+4. **Independent Mutagen Verification & Key Visual Point Audit (`verify_holdout_runs.py`):** Re-measured all exported MP3 files with `mutagen.mp3.MP3` to one decimal place and audited generated scripts against canonical key visual points.
+
+### 9.2 Holdout Results Table
+
+| Run ID | Slide ID | Slide Title | Target Length | Measured Length | Gap | Retries | Key Visual Point (Ground Truth) | Coverage Verdict | Timing Verdict | Gated Download |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **`run_h01`** | `slide_11` | Paid seats by plan | 30.0s | 37.2s | +7.2s | 4 | *The new Teams plan grew from zero to 15,000 seats in two months, passing Enterprise* | **COVERED** | **FAIL** | ⛔ **Locked (Hidden)** |
+| **`run_h02`** | `slide_12` | Weekly active editors, Q1 | 20.0s | 17.7s | -2.3s | 1 | *Active editors climbed about 40% in the six weeks after the week 7 release* | **COVERED** | **PASS** | ⬇️ **Unlocked (Visible)** |
+| **`run_h03`** | `slide_15` | Monthly sales since September | 20.0s | 18.8s | -1.2s | 0 | *Sales jumped about 50% when the catering menu launched in December and stayed at that higher level* | **COVERED** | **PASS** | ⬇️ **Unlocked (Visible)** |
+| **`run_h04`** | `slide_11` | Paid seats by plan | 20.0s | 19.8s | -0.2s | 0 | *The new Teams plan grew from zero to 15,000 seats in two months, passing Enterprise* | **COVERED** | **PASS** | ⬇️ **Unlocked (Visible)** |
+
+### 9.3 Detailed Analysis of Holdout Runs
+
+#### Run 1 (`run_h01`: `slide_11` @ 30.0s Target) — Fail Case (Download Locked)
+- **Slide Graphic:** `slide_11_paid_seats_by_plan_bars.png` (Grouped bar chart: Pro 41k/43k/44k; Teams 0/6k/15k; Enterprise 2k/2k/3k).
+- **Target Words:** $\text{round}(30 \times 2.73) = 82\text{ words}$.
+- **Execution Trace:** Initial draft produced 55 words running 22.8s (gap -7.2s). Rate ladder slowed by -10% (25.1s) and -20% (27.2s). Model rewrite was triggered to expand to 82 words; the expanded script reached 87 words. At +0% speed, Edge-TTS measured **37.2s (gap +7.2s)**. Retries exhausted at retry limit 4.
+- **Timing Verdict:** `FAIL` (`gap = +7.2s` exceeds $\pm 3.0\text{s}$).
+- **App Behavior:** Download button strictly suppressed. Clear error banner displayed: *"Audio Download Locked: Narration measured duration (37.2s) missed target length (30.0s) by +7.2s after 4 retries."*
+- **Key Visual Point Coverage:** **COVERED**. Script states: *"The Teams plan, launched in February, shows zero seats in January, then jumped to 6,000 seats in February and 15,000 seats in March. This rapid growth made the Teams plan the second-largest plan by March."* (Explicitly covers growing from zero to 15,000 seats in two months and passing Enterprise to become second-largest plan).
+
+#### Run 2 (`run_h02`: `slide_12` @ 20.0s Target) — Pass Case
+- **Slide Graphic:** `slide_12_weekly_active_editors_line.png` (Line chart: flat near 2.1M for weeks 1-6, climbs to 2.9M by week 12).
+- **Target Words:** $\text{round}(20 \times 2.73) = 55\text{ words}$.
+- **Execution Trace:** Initial draft was 37 words running 16.0s (gap -4.0s). Attempt 2 applied a -10% rate nudge, measuring **17.7s (gap -2.3s)**.
+- **Timing Verdict:** `PASS` (`gap = -2.3s` within $\pm 3.0\text{s}$). Retries used: 1.
+- **App Behavior:** Download button unlocked with audio preview player.
+- **Key Visual Point Coverage:** **COVERED**. Script states: *"After staying flat near 2.1 million for the first six weeks, the number steadily climbed to 2.9 million by week 12."* (States the 2.1M flatline for first 6 weeks and climb to 2.9M, which mathematically and visually describes the 40% post-week-6 climb).
+
+#### Run 3 (`run_h03`: `slide_15` @ 20.0s Target) — Pass Case
+- **Slide Graphic:** `slide_15_monthly_sales_usd_bars.png` (Bar chart: sales jump ~50% in December and stay high).
+- **Target Words:** 55 words.
+- **Execution Trace:** Initial draft produced 44 words running **18.8s (gap -1.2s)** on Attempt 1 at +0% baseline rate.
+- **Timing Verdict:** `PASS` (`gap = -1.2s` within $\pm 3.0\text{s}$). Retries used: 0.
+- **App Behavior:** Download button unlocked immediately on Attempt 1.
+- **Key Visual Point Coverage:** **COVERED**. Script states: *"Sales jumped about 50% in December and stayed high through February."* (Direct semantic match to ground truth).
+
+#### Run 4 (`run_h04`: `slide_11` @ 20.0s Target) — Second Target Length Pass Case
+- **Slide Graphic:** `slide_11_paid_seats_by_plan_bars.png` (Same slide tested at a different duration).
+- **Target Words:** 55 words.
+- **Execution Trace:** Initial draft produced 47 words running **19.8s (gap -0.2s)** on Attempt 1 at +0% baseline rate.
+- **Timing Verdict:** `PASS` (`gap = -0.2s` within $\pm 3.0\text{s}$). Retries used: 0.
+- **App Behavior:** Download button unlocked immediately with near-perfect slot fit.
+- **Key Visual Point Coverage:** **COVERED**. Script states: *"The Teams plan grew from zero seats to 15,000, becoming the second-largest plan."*
+
+### 9.4 Independent Verification Output (`verify_holdout_runs.py`)
+```text
+================================================================================
+MUTAGEN INDEPENDENT RE-MEASUREMENT & KEY VISUAL POINT AUDIT
+================================================================================
+
+[run_h01] Slide: slide_11 | Target: 30.0s
+  Audio File:       holdout_audio\run_h01_slide_11.mp3
+  Mutagen Duration: 37.2s
+  Target Gap:       +7.2s (Tolerance: ±3.0s)
+  Retries Used:     4
+  Script:           "The bar chart displays paid seats by plan from January to March 2025. Pro seats started at 41,000 in January, increased to 43,000 in February, and reached 44,000 in March. The Enterprise plan began with 2,000 seats in January, remained at 2,000 in February, and grew to 3,000 in March. The Teams plan, launched in February, shows zero seats in January, then jumped to 6,000 seats in February and 15,000 seats in March. This rapid growth made the Teams plan the second-largest plan by March. Enterprise pilots are currently running in four regions."
+  Key Visual Point: "The new Teams plan grew from zero to 15,000 seats in two months, passing Enterprise"
+  Timing Verdict:   FAIL
+
+[run_h02] Slide: slide_12 | Target: 20.0s
+  Audio File:       holdout_audio\run_h02_slide_12.mp3
+  Mutagen Duration: 17.7s
+  Target Gap:       -2.3s (Tolerance: ±3.0s)
+  Retries Used:     1
+  Script:           "This chart shows weekly active presentation editors. After staying flat near 2.1 million for the first six weeks, the number steadily climbed to 2.9 million by week 12. This represents weekly active editors for Q1."
+  Key Visual Point: "Active editors climbed about 40% in the six weeks after the week 7 release"
+  Timing Verdict:   PASS
+
+[run_h03] Slide: slide_15 | Target: 20.0s
+  Audio File:       holdout_audio\run_h03_slide_15.mp3
+  Mutagen Duration: 18.8s
+  Target Gap:       -1.2s (Tolerance: ±3.0s)
+  Retries Used:     0
+  Script:           "Sales jumped about 50% in December and stayed high through February. This bar chart shows monthly sales in USD from September 2024 to February 2025. Key details include the catering menu launch on December 2nd, the same two staff, and no paid advertising."
+  Key Visual Point: "Sales jumped about 50% when the catering menu launched in December and stayed at that higher level"
+  Timing Verdict:   PASS
+
+[run_h04] Slide: slide_11 | Target: 20.0s
+  Audio File:       holdout_audio\run_h04_slide_11.mp3
+  Mutagen Duration: 19.8s
+  Target Gap:       -0.2s (Tolerance: ±3.0s)
+  Retries Used:     0
+  Script:           "The bar chart shows paid seats by plan from January to March 2025. The Teams plan grew from zero seats to 15,000, becoming the second-largest plan. Pro seats increased across the quarter. The Teams plan launched in February, and Enterprise pilots are in four regions."
+  Key Visual Point: "The new Teams plan grew from zero to 15,000 seats in two months, passing Enterprise"
+  Timing Verdict:   PASS
+```
+
+### 9.5 UI Evidence Screenshots
+
+- **Passing Run (`screenshots/app_pass_download.png`):** Shows `run_h04` (`slide_11` @ 20.0s) passing at 19.8s (`gap = -0.2s`, 0 retries). All 5 evidence metrics are displayed in cards and script box. Download button is prominently visible in Coral Red with audio player active.
+- **Failing Run (`screenshots/app_fail_download_hidden.png`):** Shows `run_h01` (`slide_11` @ 30.0s) failing at 37.2s (`gap = +7.2s`, 4 retries). All 5 evidence metrics are visible. Download button is completely hidden, and the red Canva Magic Studio policy warning is displayed.

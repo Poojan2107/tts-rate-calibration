@@ -1,0 +1,54 @@
+[
+  {
+    "run_id": "run_h01",
+    "slide_id": "slide_11",
+    "slide_title": "Paid seats by plan",
+    "target_seconds": 30.0,
+    "measured_seconds": 37.2,
+    "gap": 7.2,
+    "retries_used": 4,
+    "verdict": "FAILED",
+    "key_visual_point": "The new Teams plan grew from zero to 15,000 seats in two months, passing Enterprise",
+    "script": "The bar chart displays paid seats by plan from January to March 2025.\nPro seats started at 41,000 in January, increased to 43,000 in February, and reached 44,000 in March.\nThe Enterprise plan began with 2,000 seats in January, remained at 2,000 in February, and grew to 3,000 in March.\nThe Teams plan, launched in February, shows zero seats in January, then jumped to 6,000 seats in February and 15,000 seats in March.\nThis rapid growth made the Teams plan the second-largest plan by March.\nEnterprise pilots are currently running in four regions.",
+    "audio_file": "holdout_audio\\run_h01_slide_11.mp3"
+  },
+  {
+    "run_id": "run_h02",
+    "slide_id": "slide_12",
+    "slide_title": "Weekly active editors, Q1",
+    "target_seconds": 20.0,
+    "measured_seconds": 17.7,
+    "gap": -2.3,
+    "retries_used": 1,
+    "verdict": "PASS",
+    "key_visual_point": "Active editors climbed about 40% in the six weeks after the week 7 release",
+    "script": "This chart shows weekly active presentation editors. After staying flat near 2.1 million for the first six weeks, the number steadily climbed to 2.9 million by week 12. This represents weekly active editors for Q1.",
+    "audio_file": "holdout_audio\\run_h02_slide_12.mp3"
+  },
+  {
+    "run_id": "run_h03",
+    "slide_id": "slide_15",
+    "slide_title": "Monthly sales since September",
+    "target_seconds": 20.0,
+    "measured_seconds": 18.8,
+    "gap": -1.2,
+    "retries_used": 0,
+    "verdict": "PASS",
+    "key_visual_point": "Sales jumped about 50% when the catering menu launched in December and stayed at that higher level",
+    "script": "Sales jumped about 50% in December and stayed high through February. This bar chart shows monthly sales in USD from September 2024 to February 2025. Key details include the catering menu launch on December 2nd, the same two staff, and no paid advertising.",
+    "audio_file": "holdout_audio\\run_h03_slide_15.mp3"
+  },
+  {
+    "run_id": "run_h04",
+    "slide_id": "slide_11",
+    "slide_title": "Paid seats by plan",
+    "target_seconds": 20.0,
+    "measured_seconds": 19.8,
+    "gap": -0.2,
+    "retries_used": 0,
+    "verdict": "PASS",
+    "key_visual_point": "The new Teams plan grew from zero to 15,000 seats in two months, passing Enterprise",
+    "script": "The bar chart shows paid seats by plan from January to March 2025. The Teams plan grew from zero seats to 15,000, becoming the second-largest plan. Pro seats increased across the quarter. The Teams plan launched in February, and Enterprise pilots are in four regions.",
+    "audio_file": "holdout_audio\\run_h04_slide_11.mp3"
+  }
+]

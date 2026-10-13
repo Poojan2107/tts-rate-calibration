@@ -216,11 +216,14 @@ def rate_to_string(rate_int: int) -> str:
     return f"{rate_int}%"
 
 
-async def process_slide(slide_row: dict, force_short_draft: bool = False) -> dict:
-    slide_id = slide_row["slide_id"]
-    target_seconds = float(slide_row["target_length_seconds"])
+async def process_slide_custom(
+    image_path: str,
+    target_seconds: float,
+    slide_id: str = "custom_slide",
+    force_short_draft: bool = False,
+    status_cb=None
+) -> dict:
     target_words = round(target_seconds * CALIBRATED_WPS)
-    image_path = os.path.join(SLIDES_DIR, slide_row["image_filename"])
 
     print(f"\n{'='*75}")
     print(f"SLIDE: {slide_id} | Image: {image_path} | Target: {target_seconds:.1f}s | Target Words: {target_words}")
@@ -444,6 +447,18 @@ async def process_slide(slide_row: dict, force_short_draft: bool = False) -> dic
         "attempts": attempts,
         "final_attempt": attempts[-1] if attempts else None
     }
+
+
+async def process_slide(slide_row: dict, force_short_draft: bool = False) -> dict:
+    slide_id = slide_row["slide_id"]
+    target_seconds = float(slide_row["target_length_seconds"])
+    image_path = os.path.join(SLIDES_DIR, slide_row["image_filename"])
+    return await process_slide_custom(
+        image_path=image_path,
+        target_seconds=target_seconds,
+        slide_id=slide_id,
+        force_short_draft=force_short_draft
+    )
 
 
 async def main():
