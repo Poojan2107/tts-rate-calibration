@@ -241,8 +241,7 @@ async def process_slide(slide_row: dict) -> dict:
             audit_result = audit_factual_entailment(base64_image, current_script)
             for idx, item in enumerate(audit_result.get("evaluations", []), 1):
                 print(f"  Sentence {idx} [{item.get('verdict')}]: \"{item.get('sentence')}\"")
-                if item.get("verdict") == "UNGROUNDED":
-                    print(f"    --> Flagged: {item.get('reason')}")
+                print(f"    Reason: {item.get('reason')}")
 
             if audit_result["overall_verdict"] == "FAIL":
                 ungrounded_str = "; ".join(audit_result["ungrounded_sentences"])
