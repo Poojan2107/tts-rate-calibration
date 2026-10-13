@@ -189,8 +189,8 @@ def verify_holdout_runs():
         results = json.load(f)
 
     print("=" * 85)
-    print("APP DOWNLOAD MEASUREMENT & KEY VISUAL POINT COVERAGE AUDIT")
-    print("Measuring files produced by delivery.get_download_bytes (app download button)")
+    print("BROWSER DOWNLOAD MEASUREMENT & KEY VISUAL POINT COVERAGE AUDIT")
+    print("Measuring MP3s captured by clicking st.download_button in the live app")
     print("=" * 85)
 
     table_rows = []
@@ -202,36 +202,24 @@ def verify_holdout_runs():
         retries = r.get("retries_used", 0)
         script = r.get("script", "")
         key_point = r.get("key_visual_point", "")
-        status = r.get("verdict", "FAIL")
         diag_measured = float(r.get("measured_seconds", 0.0))
         audio_file = r.get("audio_file")
+        download_source = r.get("download_source", "")
 
-        # Re-apply the exact app gate. Never unlock by run_id.
-        download_bytes = delivery.get_download_bytes(
-            status=status,
-            measured_seconds=diag_measured,
-            target_seconds=target,
-            audio_path=audio_file,
+        # Only credit a real browser download — not a delivery.py reconstruction.
+        is_browser_download = (
+            bool(audio_file)
+            and os.path.exists(audio_file)
+            and download_source.startswith("browser click")
         )
 
-        if download_bytes is not None:
-            # Measure the bytes the button would hand over (temp file from those bytes)
-            with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp:
-                tmp.write(download_bytes)
-                tmp_path = tmp.name
-            try:
-                mutagen_sec = round(MP3(tmp_path).info.length, 1)
-            finally:
-                try:
-                    os.remove(tmp_path)
-                except OSError:
-                    pass
-
+        if is_browser_download:
+            mutagen_sec = round(MP3(audio_file).info.length, 1)
             gap = round(mutagen_sec - target, 1)
             measured_str = f"{mutagen_sec:.1f}s"
             gap_str = f"{gap:+.1f}s"
-            timing_verdict = "PASS"
-            download_col = "[UNLOCKED] App download button bytes"
+            timing_verdict = "PASS" if abs(gap) <= 3.0 else "FAIL"
+            download_col = "[UNLOCKED] Browser download button click"
             cov_verdict, cov_notes = evaluate_key_point_coverage(slide_id, script)
             downloaded_label = audio_file
         else:
@@ -241,8 +229,13 @@ def verify_holdout_runs():
             timing_verdict = "FAIL (retry limit reached)"
             download_col = "[LOCKED] Download hidden"
             cov_verdict = "N/A"
-            cov_notes = "delivery locked / no script shipped"
+            cov_notes = "delivery locked / no browser download"
             downloaded_label = "N/A (download hidden)"
+            if audio_file and not download_source.startswith("browser click"):
+                print(
+                    f"  [WARN] {run_id} has audio_file but download_source="
+                    f"{download_source!r} — not counting as browser download"
+                )
 
         print(f"\n[{run_id}] Slide: {slide_id} | Target: {target:.1f}s")
         print(f"  Downloaded Audio: {downloaded_label}")

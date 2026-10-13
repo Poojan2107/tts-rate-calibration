@@ -953,13 +953,13 @@ To demonstrate that the calibrated pipeline holds up on slides it has never seen
   3. **Mutagen-Measured Seconds** (rounded to 0.1s)
   4. **Timing Gap** (with pass/fail color-coding)
   5. **Retries Used**
-- **Gated Download Policy:** The MP3 download button appears **strictly when `abs(gap) <= 3.0s` and status is `PASS`**, via shared [`delivery.get_download_bytes`](delivery.py) (the same function holdout export/verify use). When retries are exhausted without achieving timing tolerance, the download button is completely hidden/suppressed, and a clear delivery lock alert is displayed.
+- **Gated Download Policy:** The MP3 download button appears **strictly when `abs(gap) <= 3.0s` and status is `PASS`** ([delivery.py](delivery.py) in `app.py`). When retries are exhausted without achieving timing tolerance, the download button is completely hidden/suppressed, and a clear delivery lock alert is displayed. Holdout evidence is captured by actually clicking that button in-browser ([capture_holdout_downloads.py](capture_holdout_downloads.py)).
 
 ### 2. Holdout Experiment Results Table (6 Runs: 3 Slides at 2 Lengths Each)
 
 Six experimental runs were executed across the holdout deck (`slide_11`, `slide_14`, `slide_15`), evaluating every slide across two distinct presentation target lengths (20.0s and 30.0s). `slide_14` replaced `slide_12` after both `slide_12` lengths failed key-point coverage (the scripts never stated the climb as an explicit 40% rate).
 
-The table below reports **downloaded MP3 bytes from the same gate as `app.py`'s download button** ([delivery.py](delivery.py) → `get_download_bytes`). Holdout export ([export_app_downloads.py](export_app_downloads.py) / [run_holdout_experiments.py](run_holdout_experiments.py)) writes only those bytes into `holdout_audio/`; [verify_holdout_runs.py](verify_holdout_runs.py) re-applies the gate and measures those files. Locked runs have `audio_file: null` — nothing for a presenter to download.
+The table below reports **MP3 files a real browser received after clicking `■ DOWNLOAD AUDIO (.MP3)` in the live Streamlit app**. [capture_holdout_downloads.py](capture_holdout_downloads.py) opens each `/?run=run_hXX` row, clicks the download button (or confirms it is hidden when locked), and saves Playwright's download event into `holdout_audio/`. [verify_holdout_runs.py](verify_holdout_runs.py) measures only files whose `download_source` is `browser click of st.download_button`. Locked runs have `audio_file: null` — nothing for a presenter to download.
 
 | Run ID | Slide ID | Slide Title | Target Length | Measured Download Length | Gap | Retries | Key Visual Point (Ground Truth) | Coverage Verdict | Timing Verdict | Gated Download |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
