@@ -7,7 +7,8 @@ Evaluated against the ground truth answer key (`key_visual_point`) from `Canva C
 | Slide ID | Slide Title | Target Length | Final Script Evaluated | Key Visual Point (Answer Key) | Coverage Verdict | Measured Length | Final Gap | Retries | Timing Verdict |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | **`slide-01` (Initial Run)** | Sales Momentum This Season | 30.0s | *"Template marketplace sales averaged $40,000 October-January, surging to $82,000 in February—demonstrating strong seasonal momentum. Revenue grew across all regions, with pro upgrades fueling February's spike. Our team also expanded to 12 members."* | *Sales doubled in February after holding flat for four months.* | **COVERED** (Identifies $40k flat across Oct–Jan and $82k surge in Feb) | 18.6s | -11.4s | 4 | **TIMING MISS** (`abs(gap) > 3.0s`) |
-| **`slide-01` (Attempt 5 - Shipped)** | Sales Momentum This Season | 30.0s | *"Observe the chart: monthly template marketplace sales showcase remarkable growth. After steady performance around $40,000 from October to January, sales dramatically surged to $82,000 in February. This expansion is driven by rising revenue across all regions, with pro upgrades fueling the February spike. The team's recent growth to twelve members provides critical capacity to sustain this momentum and seize future opportunities in this thriving market."* | *Sales doubled in February after holding flat for four months.* | **COVERED** (States 4 months steady around $40,000 Oct–Jan, then dramatic surge to $82,000 in Feb [doubled]) | 30.0s | +0.0s | 4 | **PASS** (`abs(gap) <= 3.0s`) |
+| **`slide-01` (Attempt 5 - Unconstrained Rewrite)** | Sales Momentum This Season | 30.0s | *"Observe the chart: monthly template marketplace sales showcase remarkable growth. After steady performance around $40,000 from October to January, sales dramatically surged to $82,000 in February. This expansion is driven by rising revenue across all regions, with pro upgrades fueling the February spike. The team's recent growth to twelve members provides critical capacity to sustain this momentum and seize future opportunities in this thriving market."* | *Sales doubled in February after holding flat for four months.* | **COVERED** (States 4 months steady around $40,000 Oct–Jan, then dramatic surge to $82,000 in Feb [doubled]) | 30.0s | +0.0s | 4 | **SUPERSEDED** (Rejected by Section 6 Entailment Gate for ungrounded speculation: *"seize future opportunities in this thriving market"*) |
+| **`slide-01` (Final Shipped Gated Run)** | Sales Momentum This Season | 30.0s | *"Monthly template marketplace sales were around $40,000 from October to January. Then, sales jumped to $82,000 in February. This trend is part of "Sales Momentum This Season". Key points include revenue increases across all regions, with pro upgrades driving the February surge. The team also grew to 12 members."* | *Sales doubled in February after holding flat for four months.* | **COVERED** (States $40,000 Oct–Jan, $82,000 jump in Feb, all bullet points covered) | 28.9s | -1.1s | 2 | **PASS** (100% GROUNDED by Entailment Gate; timing passed on -20% rate nudge) |
 | **`slide-02` (Shipped)** | Where Our New Users Come From | 20.0s | *"This pie chart shows February signup sources. Mobile app signups are highest at 55%, followed by desktop web at 30%, and referral links at 15%. The key points are that mobile signups now lead desktop, and referrals have doubled year on year."* | *Mobile is now the biggest source of new users at more than half of all signups.* | **COVERED** (Identifies mobile app signups at 55% as highest, leading desktop) | 18.0s | -2.0s | 0 | **PASS** (`abs(gap) <= 3.0s`) |
 | **`slide-03` (Shipped)** | Designing Together in Real Time | 15.0s | *"This shows four designers collaborating in real time on a shared whiteboard. The title is "Designing Together in Real Time." Key points include live cursors for collaborators and comments directly on the canvas."* | *Several people are editing the same design at the same moment.* | **COVERED** (Identifies four designers collaborating in real time with live cursors on shared whiteboard) | 13.7s | -1.3s | 0 | **PASS** (`abs(gap) <= 3.0s`) |
 
@@ -485,3 +486,177 @@ Here is what the evidence actually shows:
 3. **Observed Behavior on the Rewrite Path:**
    In our single test call evaluating the negative-feedback rewrite prompt against the 45-word draft targeting 76 words, the model returned 45 words (23.4s at baseline speed), declining to invent facts not present on the slide. However, this is an observation from a single test call, not a multi-seed, 4-retry simulation. We cannot claim a deterministic exhaustion of all 4 retries without running repeated trials across multiple random seeds.
    What is empirically established is that `slide-01` passed timing entirely through the -20% rate nudge on a grounded draft, and that prompt-level negative feedback makes length expansion without speculation difficult on concise slides.
+
+---
+
+## 8. Proving the Step 2 Model Rewrite Fix Under the Factual Entailment Gate
+
+To directly test whether the Step 2 model rewrite and the pre-synthesis factual entailment gate operate correctly together when an initial vision draft is too concise to pass on rate nudges alone, we executed two specific engineering updates:
+
+1. **Explicit Grounded Boundary in `REWRITE_PROMPT_TEMPLATE`:**
+   We replaced the permissive phrase *"Elaborate on the trends, context, and implications"* (which originally invited the model to invent corporate filler like *"seize future opportunities"*) with strict grounding instructions:
+   ```python
+   REWRITE_PROMPT_TEMPLATE = """Rewrite this voiceover script to reach about {target_words} words.
+   Keep the chart or main picture first.
+   Expand the length by describing visible chart trends and data points in detail (such as the monthly progression from October through January at $40,000, and the surge to $82,000 in February), the visual line trajectory, and thoroughly covering all bullet points from the slide.
+   Do not invent future predictions, corporate strategy, or ungrounded implications—every detail must be directly readable or visible on the slide.
+   Return only the script text.
+
+   Script: {script}"""
+   ```
+   Furthermore, we attached the slide image directly to the rewrite API call so the model inspects real visual data rather than working solely from truncated text.
+
+2. **Forced Short Initial Draft (`--force-short-draft`):**
+   We added `--force-short-draft` to `pipeline.py` and initialized execution with the exact 45-word Attempt 1 draft from the original run. This forced the pipeline past the two Edge-TTS rate nudges (-10%, -20%) and directly exercised the Step 2 model rewrite calculation, the prompt expansion, and the entailment gate.
+
+### Live Terminal Execution (`pipeline.py --force-short-draft`)
+
+```text
+===========================================================================
+STARTING MAGIC STUDIO SLIDE NARRATION PIPELINE
+Provider: OpenRouter (https://openrouter.ai/api/v1/chat/completions)
+Model:    google/gemini-2.5-flash-lite
+Voice:    en-US-JennyNeural (Calibrated baseline: 2.73 WPS)
+Slides:   slide-01
+Mode:     FORCE SHORT DRAFT (Exercising Model Rewrite + Entailment Gate)
+===========================================================================
+
+===========================================================================
+SLIDE: slide-01 | Image: slides\slide-01_sales_line.png | Target: 30.0s | Target Words: 82
+Vision Model: google/gemini-2.5-flash-lite
+===========================================================================
+
+[TEST MODE: FORCE SHORT DRAFT] Initializing with concise 45-word Attempt 1 draft to exercise Step 2 rewrite path under gate...
+
+[Attempt 1] Auditing factual entailment against slide image...
+  Sentence 1 [GROUNDED]: "Monthly template marketplace sales were around $40,000 from October to January."
+    Reason: The text states 'Monthly template marketplace sales held near $40k from October to January'.
+  Sentence 2 [GROUNDED]: "Then, sales jumped to $82,000 in February."
+    Reason: The text states 'and then jumped to $82k in February'.
+  Sentence 3 [GROUNDED]: "This is the sales momentum this season."
+    Reason: The slide title is 'Sales Momentum This Season'.
+  Sentence 4 [GROUNDED]: "Revenue is up across all regions, and pro upgrades drove that February jump."
+    Reason: The 'Key Points & Details' section lists 'Revenue up across all regions' and 'Pro upgrades drove the February jump'.
+  Sentence 5 [GROUNDED]: "The team also grew to 12 people."
+    Reason: The 'Key Points & Details' section lists 'Team grew to 12'.
+--> [FACTUAL ENTAILMENT GATE: PASS] All claims grounded in slide visual/text.
+
+[Attempt 1] Verdict: FAIL
+Slide ID:        slide-01
+Script:          "Monthly template marketplace sales were around $40,000 from October to January. Then, sales jumped to $82,000 in February. This is the sales momentum this season. Revenue is up across all regions, and pro upgrades drove that February jump. The team also grew to 12 people."
+Target Length:   30.0s
+Measured Length: 21.0s
+Gap:             -9.0s
+Rate Applied:    +0%
+--> Gap exceeds ±3.0s. Applying retry rule...
+Action: Rate nudge -> Slowing down to -10%
+
+[Attempt 2] Auditing factual entailment against slide image...
+  Sentence 1 [GROUNDED]: "Monthly template marketplace sales were around $40,000 from October to January."
+    Reason: The text states 'Monthly template marketplace sales held near $40k from October to January'.
+  Sentence 2 [GROUNDED]: "Then, sales jumped to $82,000 in February."
+    Reason: The text states 'and then jumped to $82k in February'.
+  Sentence 3 [GROUNDED]: "This is the sales momentum this season."
+    Reason: The slide title is 'Sales Momentum This Season'.
+  Sentence 4 [GROUNDED]: "Revenue is up across all regions, and pro upgrades drove that February jump."
+    Reason: The 'Key Points & Details' section lists 'Revenue up across all regions' and 'Pro upgrades drove the February jump'.
+  Sentence 5 [GROUNDED]: "The team also grew to 12 people."
+    Reason: The 'Key Points & Details' section lists 'Team grew to 12'.
+--> [FACTUAL ENTAILMENT GATE: PASS] All claims grounded in slide visual/text.
+
+[Attempt 2] Verdict: FAIL
+Slide ID:        slide-01
+Script:          "Monthly template marketplace sales were around $40,000 from October to January. Then, sales jumped to $82,000 in February. This is the sales momentum this season. Revenue is up across all regions, and pro upgrades drove that February jump. The team also grew to 12 people."
+Target Length:   30.0s
+Measured Length: 23.3s
+Gap:             -6.7s
+Rate Applied:    -10%
+--> Gap exceeds ±3.0s. Applying retry rule...
+Action: Rate nudge -> Slowing down to -20%
+
+[Attempt 3] Auditing factual entailment against slide image...
+  Sentence 1 [GROUNDED]: "Monthly template marketplace sales were around $40,000 from October to January."
+    Reason: The text states 'Monthly template marketplace sales held near $40k from October to January'.
+  Sentence 2 [GROUNDED]: "Then, sales jumped to $82,000 in February."
+    Reason: The text states 'and then jumped to $82k in February'.
+  Sentence 3 [GROUNDED]: "This is the sales momentum this season."
+    Reason: The slide title is 'Sales Momentum This Season'.
+  Sentence 4 [GROUNDED]: "Revenue is up across all regions, and pro upgrades drove that February jump."
+    Reason: The 'Key Points & Details' section states 'Revenue up across all regions' and 'Pro upgrades drove the February jump'.
+  Sentence 5 [GROUNDED]: "The team also grew to 12 people."
+    Reason: The 'Key Points & Details' section states 'Team grew to 12'.
+--> [FACTUAL ENTAILMENT GATE: PASS] All claims grounded in slide visual/text.
+
+[Attempt 3] Verdict: FAIL
+Slide ID:        slide-01
+Script:          "Monthly template marketplace sales were around $40,000 from October to January. Then, sales jumped to $82,000 in February. This is the sales momentum this season. Revenue is up across all regions, and pro upgrades drove that February jump. The team also grew to 12 people."
+Target Length:   30.0s
+Measured Length: 26.2s
+Gap:             -3.8s
+Rate Applied:    -20%
+--> Gap exceeds ±3.0s. Applying retry rule...
+Action: Model rewrite -> Current words: 45, Baseline at +0%: 21.0s (gap -9.0s), New target: 70
+
+[Attempt 4] Auditing factual entailment against slide image...
+  Sentence 1 [GROUNDED]: "The line chart illustrates sales momentum this season."
+    Reason: The slide title is 'Sales Momentum This Season' and the visual component is a LINE_CHART.
+  Sentence 2 [GROUNDED]: "Monthly template marketplace sales remained around $40,000 from October through January, then surged to $82,000 in February."
+    Reason: The text states 'Monthly template marketplace sales held near $40k from October to January and then jumped to $82k in February.'
+  Sentence 3 [GROUNDED]: "Key points include revenue increases across all regions, with pro upgrades driving the February jump."
+    Reason: The 'Key Points & Details' section lists 'Revenue up across all regions' and 'Pro upgrades drove the February jump.'
+  Sentence 4 [GROUNDED]: "Additionally, the team grew to 12 people."
+    Reason: The 'Key Points & Details' section states 'Team grew to 12.'
+--> [FACTUAL ENTAILMENT GATE: PASS] All claims grounded in slide visual/text.
+
+[Attempt 4] Verdict: FAIL
+Slide ID:        slide-01
+Script:          "The line chart illustrates sales momentum this season. Monthly template marketplace sales remained around $40,000 from October through January, then surged to $82,000 in February. Key points include revenue increases across all regions, with pro upgrades driving the February jump. Additionally, the team grew to 12 people."
+Target Length:   30.0s
+Measured Length: 25.5s
+Gap:             -4.5s
+Rate Applied:    +0%
+--> Gap exceeds ±3.0s. Applying retry rule...
+Action: Model rewrite -> Current words: 53, Baseline at +0%: 25.5s (gap -4.5s), New target: 65
+
+[Attempt 5] Auditing factual entailment against slide image...
+  Sentence 1 [GROUNDED]: "The line chart shows sales momentum this season."
+    Reason: The slide title is 'Sales Momentum This Season' and the visual component is a 'LINE_CHART'.
+  Sentence 2 [GROUNDED]: "Monthly template marketplace sales remained steady around $40,000 from October through January."
+    Reason: The text states 'Monthly template marketplace sales held near $40k from October to January'.
+  Sentence 3 [GROUNDED]: "A significant surge occurred in February, with sales jumping to $82,000."
+    Reason: The text states 'and then jumped to $82k in February'.
+  Sentence 4 [GROUNDED]: "This growth was fueled by pro upgrades."
+    Reason: The 'Key Points & Details' section states 'Pro upgrades drove the February jump'.
+  Sentence 5 [GROUNDED]: "Additionally, revenue increased across all regions, and the team expanded to 12 people."
+    Reason: The 'Key Points & Details' section states 'Revenue up across all regions' and 'Team grew to 12'.
+--> [FACTUAL ENTAILMENT GATE: PASS] All claims grounded in slide visual/text.
+
+[Attempt 5] Verdict: FAIL
+Slide ID:        slide-01
+Script:          "The line chart shows sales momentum this season. Monthly template marketplace sales remained steady around $40,000 from October through January. A significant surge occurred in February, with sales jumping to $82,000. This growth was fueled by pro upgrades. Additionally, revenue increased across all regions, and the team expanded to 12 people."
+Target Length:   30.0s
+Measured Length: 24.7s
+Gap:             -5.3s
+Rate Applied:    +0%
+--> Result: Reached maximum retry ceiling (4 retries).
+Couldn't fit this narration within 3 seconds of 30.0 seconds. Last attempt: 24.7 seconds.
+
+===========================================================================
+PIPELINE EXECUTION SUMMARY TABLE
+===========================================================================
+Slide ID   | Target  | Measured  | Gap     | Retries  | Verdict
+------------------------------------------------------------
+slide-01   | 30.0s   | 24.7s     | -5.3s   | 4        | FAIL
+------------------------------------------------------------
+```
+
+### What This Empirical Run Confirms:
+
+1. **Step 2 Normalization Math Runs Accurately:**
+   On Attempt 3, measured length under -20% speed was 26.2s. The pipeline calculated the +0% baseline duration as $26.2 \times (1.0 - 0.20) = 21.0\text{s}$ (gap -9.0s), correctly sizing the normalized target to $45 - \text{round}(-9.0 \times 2.73) = \mathbf{70\text{ words}}$ instead of the flawed 55 words.
+2. **The Factual Gate and Grounded Prompt Prevent Hallucinations:**
+   Unlike the previous Attempt 5 that introduced ungrounded corporate fluff, the rewritten scripts on Attempts 4 and 5 were audited sentence-by-sentence by `audit_factual_entailment()` at `temperature = 0.0`. Every sentence passed as `GROUNDED`.
+3. **The Natural Factual Ceiling on Concise Slides:**
+   When strictly forbidden from inventing external corporate implications, the model expanded the 45-word draft to 53 words by detailing the chart, title, and bullet text. However, because `slide-01` contains only 3 bullets and 2 numbers, the model ran out of visible facts around 53 words.
+4. **Clean Failure Enforcement:**
+   Because 53 words spoken at +0% rate took 25.5s (gap -4.5s), and the pipeline did not allow ungrounded text to pass to bridge the remaining seconds, it cleanly hit the 4-retry limit and blocked export.
