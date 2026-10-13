@@ -418,9 +418,9 @@ with col_left:
             "run_h04": "run_h04 · Paid seats by plan [20.0s] — PASS (Gap -0.2s)",
             "run_h01": "run_h01 · Paid seats by plan [30.0s] — FAIL (Retry limit reached, Locked)",
             "run_h02": "run_h02 · Weekly active editors [20.0s] — PASS (Gap -2.3s)",
-            "run_h05": "run_h05 · Weekly active editors [30.0s] — PASS (Gap +0.6s)",
+            "run_h05": "run_h05 · Weekly active editors [30.0s] — PASS (Gap -0.4s)",
             "run_h03": "run_h03 · Monthly sales [20.0s] — PASS (Gap -1.2s)",
-            "run_h06": "run_h06 · Monthly sales [30.0s] — PASS (Gap -1.7s)"
+            "run_h06": "run_h06 · Monthly sales [30.0s] — PASS (Gap -0.8s)"
         }
         
         raw_query = st.query_params.to_dict() if hasattr(st.query_params, "to_dict") else {}

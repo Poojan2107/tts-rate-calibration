@@ -983,14 +983,14 @@ Rather than using a hardcoded placeholder, each generated script was individuall
   - *Key Visual Point:* *"Active editors climbed about 40% in the six weeks after the week 7 release"*
   - `run_h02` Script: *"This chart shows weekly active presentation editors. After staying flat near 2.1 million for the first six weeks, the number steadily climbed to 2.9 million by week 12. This represents weekly active editors for Q1."*
   - **Verdict: NO (Missed).** While the script accurately notes the 2.1M baseline and 2.9M peak, it **never mentions the week 7 release** or the **40% climb rate**.
-  - `run_h05` Script: *"The line chart shows weekly active presentation editors in 2025. Activity was flat at around 2.1 million editors for the first six weeks. It then steadily climbed to 2.9 million by week 12. A marker at week 7 indicates the release of 'Magic Write for slides'..."*
-  - **Verdict: NO (Missed).** It successfully identifies the week 7 release marker and the six-week climb from 2.1M to 2.9M, but omits the explicit 40% relative rate calculation.
+  - `run_h05` Script: *"The line chart shows weekly active presentation editors for the first 12 weeks of 2025. The number of active editors stayed flat at around 2.1 million for the first six weeks. Then, it steadily climbed to 2.9 million by week 12. A marker at week seven indicates the release of 'Magic Write for slides.' This metric counts anyone who edits a presentation at least once a week, with mobile editors included from week three onward."*
+  - **Verdict: NO (Missed).** It successfully identifies the week 7 release marker and the climb from 2.1M to 2.9M, but omits the explicit 40% relative rate calculation.
 
 - **`slide_15` (`run_h03` & `run_h06`):**
   - *Key Visual Point:* *"Sales jumped about 50% when the catering menu launched in December and stayed at that higher level"*
   - `run_h03` Script: *"Sales jumped about 50% in December and stayed high through February. This bar chart shows monthly sales in USD from September 2024 to February 2025. Key details include the catering menu launch on December 2nd, the same two staff, and no paid advertising."*
   - **Verdict: YES (Covered).** Explicitly states the ~50% December jump, the sustained high level through February, and the December 2nd catering menu launch.
-  - `run_h06` Script: *"The bar chart shows monthly sales in USD from September 2024 to February 2025. Sales jumped about 50% in December, reaching $27.4k, and remained at a high level through February 2025, with sales of $30.3k. The catering menu was launched on December 2nd..."*
+  - `run_h06` Script: *"This bar chart shows monthly sales in USD from September 2024 to February 2025. Sales jumped about 50% in December to $27.4k and remained at a higher level in January and February, reaching $30.3k by February. The slide title is \"Monthly sales since September.\" Key points include the catering menu launch on December 2nd, with the same two staff and no paid advertising."*
   - **Verdict: YES (Covered).** Explicitly states the 50% jump, sustained sales level, and December 2nd launch.
 
 ### 4. UI Evidence Screenshots
