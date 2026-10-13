@@ -27,6 +27,8 @@ wheels/
 # Output and temp files
 *.mp3
 !holdout_audio/*.mp3
+!downloads/*.mp3
+!downloads/**/*.mp3
 *.wav
 *.aac
 output/

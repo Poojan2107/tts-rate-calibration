@@ -11,7 +11,9 @@
     "key_visual_point": "The new Teams plan grew from zero to 15,000 seats in two months, passing Enterprise",
     "script": "The bar chart displays paid seats by plan from January to March 2025.\nPro seats started at 41,000 in January, increased to 43,000 in February, and reached 44,000 in March.\nThe Enterprise plan began with 2,000 seats in January, remained at 2,000 in February, and grew to 3,000 in March.\nThe Teams plan, launched in February, shows zero seats in January, then jumped to 6,000 seats in February and 15,000 seats in March.\nThis rapid growth made the Teams plan the second-largest plan by March.\nEnterprise pilots are currently running in four regions.",
     "audio_file": null,
-    "download_source": "browser: download button absent (locked)"
+    "browser_download_path": null,
+    "download_source": "browser: download button absent (locked)",
+    "app_url": "http://localhost:8501"
   },
   {
     "run_id": "run_h02",
@@ -25,7 +27,9 @@
     "key_visual_point": "Almost half of new customers found the bakery through Instagram posts",
     "script": "The pie chart shows new customer sources from October 2024 to February 2025. Instagram posts brought in the most customers at 45 percent, or 144 people. This data covers 320 new customers in total.",
     "audio_file": "holdout_audio\\run_h02_slide_14.mp3",
+    "browser_download_path": "downloads/run_h02.mp3",
     "download_source": "browser click of st.download_button",
+    "app_url": "http://localhost:8501",
     "browser_download_filename": "slide_14_narration.mp3"
   },
   {
@@ -40,7 +44,9 @@
     "key_visual_point": "Sales jumped about 50% when the catering menu launched in December and stayed at that higher level",
     "script": "Sales jumped about 50% in December and stayed high through February. This bar chart shows monthly sales in USD from September 2024 to February 2025. Key details include the catering menu launch on December 2nd, the same two staff, and no paid advertising.",
     "audio_file": "holdout_audio\\run_h03_slide_15.mp3",
+    "browser_download_path": "downloads/run_h03.mp3",
     "download_source": "browser click of st.download_button",
+    "app_url": "http://localhost:8501",
     "browser_download_filename": "slide_15_narration.mp3"
   },
   {
@@ -55,7 +61,9 @@
     "key_visual_point": "The new Teams plan grew from zero to 15,000 seats in two months, passing Enterprise",
     "script": "The bar chart shows paid seats by plan from January to March 2025. The Teams plan grew from zero seats to 15,000, becoming the second-largest plan. Pro seats increased across the quarter. The Teams plan launched in February, and Enterprise pilots are in four regions.",
     "audio_file": "holdout_audio\\run_h04_slide_11.mp3",
+    "browser_download_path": "downloads/run_h04.mp3",
     "download_source": "browser click of st.download_button",
+    "app_url": "http://localhost:8501",
     "browser_download_filename": "slide_11_narration.mp3"
   },
   {
@@ -70,7 +78,9 @@
     "key_visual_point": "Almost half of new customers found the bakery through Instagram posts",
     "script": "This pie chart shows where Lena's new customers came from between October 2024 and February 2025. The largest source of new customers, at 45%, came from Instagram posts, totaling 144 customers. Walk-ins accounted for 25%, word of mouth for 20%, and local flyers for 10%. Overall, 320 new customers were acquired during this period.",
     "audio_file": "holdout_audio\\run_h05_slide_14.mp3",
+    "browser_download_path": "downloads/run_h05.mp3",
     "download_source": "browser click of st.download_button",
+    "app_url": "http://localhost:8501",
     "browser_download_filename": "slide_14_narration.mp3"
   },
   {
@@ -85,7 +95,9 @@
     "key_visual_point": "Sales jumped about 50% when the catering menu launched in December and stayed at that higher level",
     "script": "This bar chart shows monthly sales in USD from September 2024 to February 2025. Sales jumped about 50% in December to $27.4k and remained at a higher level in January and February, reaching $30.3k by February. The slide title is \"Monthly sales since September.\" Key points include the catering menu launch on December 2nd, with the same two staff and no paid advertising.",
     "audio_file": "holdout_audio\\run_h06_slide_15.mp3",
+    "browser_download_path": "downloads/run_h06.mp3",
     "download_source": "browser click of st.download_button",
+    "app_url": "http://localhost:8501",
     "browser_download_filename": "slide_15_narration.mp3"
   }
 ]

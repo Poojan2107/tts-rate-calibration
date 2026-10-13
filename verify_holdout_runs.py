@@ -3,12 +3,14 @@ import json
 import os
 import re
 import tempfile
+from pathlib import Path
 
 from mutagen.mp3 import MP3
 
 import delivery
 
 RESULTS_JSON = "holdout_results.json"
+DOWNLOADS_ROOT = Path("downloads")
 
 
 def evaluate_key_point_coverage(slide_id: str, script: str) -> tuple[str, str]:
@@ -20,7 +22,6 @@ def evaluate_key_point_coverage(slide_id: str, script: str) -> tuple[str, str]:
     s_lower = script.lower()
 
     if slide_id == "slide_11":
-        # Must match word 'zero' or isolated '0', NOT '0' inside '2025' or other numbers
         has_zero = bool(re.search(r"\b(zero|0)\b", s_lower))
         has_15k = bool(re.search(r"\b(15,?000|15k)\b", s_lower))
         has_passing_enterprise = any(
@@ -92,8 +93,16 @@ def evaluate_key_point_coverage(slide_id: str, script: str) -> tuple[str, str]:
     return "NO", "Unverified slide format"
 
 
+def is_browser_download_path(run_id: str, path: str | None) -> bool:
+    """True only for downloads/<run_id>.mp3 (button-click captures)."""
+    if not path:
+        return False
+    normalized = path.replace("\\", "/")
+    expected = f"downloads/{run_id}.mp3"
+    return normalized == expected and os.path.isfile(normalized)
+
+
 def run_adversarial_coverage_tests() -> bool:
-    """Feed scripts built to fail and watch coverage say NO."""
     print("\n" + "=" * 85)
     print("ADVERSARIAL COVERAGE TESTS (built-to-fail cases must return NO)")
     print("=" * 85)
@@ -128,18 +137,15 @@ def run_adversarial_coverage_tests() -> bool:
 
 
 def run_adversarial_delivery_tests() -> bool:
-    """Prove the download gate unlocks/locks from data, not run ids."""
     print("\n" + "=" * 85)
     print("ADVERSARIAL DELIVERY TESTS (gate must lock on built-to-fail cases)")
     print("=" * 85)
 
-    # Tiny valid-looking MP3 header is unnecessary — gate checks path existence after unlock.
     with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp:
         tmp.write(b"ID3fake-mp3-bytes-for-gate-test")
         fake_path = tmp.name
 
     cases = [
-        # Built to fail: exhausted retries / over window → no bytes
         ("FAIL", 37.2, 30.0, fake_path, None, "locked FAIL over window"),
         ("PASS", 37.2, 30.0, fake_path, None, "locked PASS but gap +7.2"),
         ("PASS", 19.8, 20.0, None, None, "locked PASS but missing file"),
@@ -158,7 +164,6 @@ def run_adversarial_delivery_tests() -> bool:
         mark = "[PASS]" if ok else "[FAIL]"
         print(f"  {mark} {label}: unlocked={unlocked} (expected {want_unlocked})")
 
-    # Hard rule: never special-case a run_id inside delivery
     import inspect
 
     src = inspect.getsource(delivery)
@@ -168,13 +173,20 @@ def run_adversarial_delivery_tests() -> bool:
     else:
         print("  [PASS] delivery.py has no hardcoded run_h* ids")
 
+    # Provenance guard: holdout_audio paths must NOT count as browser downloads
+    if is_browser_download_path("run_h05", "holdout_audio/run_h05_slide_14.mp3"):
+        print("  [FAIL] holdout_audio path incorrectly accepted as browser download")
+        all_passed = False
+    else:
+        print("  [PASS] holdout_audio paths rejected (must be downloads/<run_id>.mp3)")
+
     try:
         os.remove(fake_path)
     except OSError:
         pass
 
     if all_passed:
-        print("[SUCCESS] Download gate derives lock/unlock from measured gap + status only.")
+        print("[SUCCESS] Download gate + provenance checks passed.")
     else:
         print("[ERROR] One or more adversarial delivery tests failed.")
     return all_passed
@@ -190,7 +202,7 @@ def verify_holdout_runs():
 
     print("=" * 85)
     print("BROWSER DOWNLOAD MEASUREMENT & KEY VISUAL POINT COVERAGE AUDIT")
-    print("Measuring MP3s captured by clicking st.download_button in the live app")
+    print("Mutagen opens only downloads/<run_id>.mp3 from a button click capture")
     print("=" * 85)
 
     table_rows = []
@@ -203,42 +215,45 @@ def verify_holdout_runs():
         script = r.get("script", "")
         key_point = r.get("key_visual_point", "")
         diag_measured = float(r.get("measured_seconds", 0.0))
-        audio_file = r.get("audio_file")
+        browser_path = r.get("browser_download_path")
         download_source = r.get("download_source", "")
+        app_url = r.get("app_url", "")
 
-        # Only credit a real browser download — not a delivery.py reconstruction.
-        is_browser_download = (
-            bool(audio_file)
-            and os.path.exists(audio_file)
-            and download_source.startswith("browser click")
+        # Numbers come only from downloads/<run_id>.mp3 — holdout_audio never counts.
+        credited = (
+            is_browser_download_path(run_id, browser_path)
+            and str(download_source).startswith("browser click")
         )
 
-        if is_browser_download:
-            mutagen_sec = round(MP3(audio_file).info.length, 1)
+        if credited:
+            # Mutagen opens the button-click file under downloads/<run_id>/
+            mutagen_sec = round(MP3(browser_path).info.length, 1)
             gap = round(mutagen_sec - target, 1)
             measured_str = f"{mutagen_sec:.1f}s"
             gap_str = f"{gap:+.1f}s"
             timing_verdict = "PASS" if abs(gap) <= 3.0 else "FAIL"
-            download_col = "[UNLOCKED] Browser download button click"
+            download_col = "button click"
+            file_col = f"`{browser_path.replace(chr(92), '/')}`"
             cov_verdict, cov_notes = evaluate_key_point_coverage(slide_id, script)
-            downloaded_label = audio_file
+            downloaded_label = browser_path
         else:
             measured_str = "None (no download)"
             diagnostic_gap = round(diag_measured - target, 1) if diag_measured else 0.0
             gap_str = f"{diagnostic_gap:+.1f}s (diagnostic)"
             timing_verdict = "FAIL (retry limit reached)"
-            download_col = "[LOCKED] Download hidden"
+            download_col = "locked (no button)"
+            file_col = "-"
             cov_verdict = "N/A"
             cov_notes = "delivery locked / no browser download"
             downloaded_label = "N/A (download hidden)"
-            if audio_file and not download_source.startswith("browser click"):
+            if browser_path and not str(browser_path).replace("\\", "/").startswith("downloads/"):
                 print(
-                    f"  [WARN] {run_id} has audio_file but download_source="
-                    f"{download_source!r} — not counting as browser download"
+                    f"  [WARN] {run_id}: rejecting non-downloads path {browser_path!r}"
                 )
 
         print(f"\n[{run_id}] Slide: {slide_id} | Target: {target:.1f}s")
-        print(f"  Downloaded Audio: {downloaded_label}")
+        print(f"  App URL:          {app_url or '(not recorded)'}")
+        print(f"  Browser file:     {downloaded_label}")
         print(f"  Measured Length:  {measured_str}")
         print(f"  Timing Gap:       {gap_str}")
         print(f"  Retries Used:     {retries}")
@@ -259,7 +274,8 @@ def verify_holdout_runs():
                 "coverage_verdict": cov_verdict,
                 "coverage_notes": cov_notes,
                 "timing_verdict": timing_verdict,
-                "download_status": download_col,
+                "download_col": download_col,
+                "file_col": file_col,
             }
         )
 
@@ -267,22 +283,22 @@ def verify_holdout_runs():
     print("MARKDOWN RESULTS TABLE (6 RUNS: 3 SLIDES AT 2 LENGTHS EACH)")
     print("=" * 85)
     print(
-        "| Run ID | Slide ID | Target Length | Measured Download Length | Gap | Retries | "
-        "Key Visual Point (Ground Truth) | Coverage Verdict | Timing Verdict | Gated Download |"
+        "| Run ID | Slide ID | Target | Measured | Gap | Retries | "
+        "Key Visual Point | Coverage | Timing | Provenance | Mutagen file |"
     )
-    print("| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |")
+    print("| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |")
     for row in table_rows:
         if row["coverage_verdict"] == "NO":
             cov_display = f"**NO** ({row['coverage_notes']})"
         elif row["coverage_verdict"] == "N/A":
-            cov_display = f"**N/A** (delivery locked)"
+            cov_display = "**N/A** (delivery locked)"
         else:
             cov_display = "**YES**"
 
         print(
             f"| **`{row['run_id']}`** | `{row['slide_id']}` | {row['target']} | {row['measured']} | "
             f"{row['gap']} | {row['retries']} | *{row['key_point']}* | {cov_display} | "
-            f"**{row['timing_verdict']}** | {row['download_status']} |"
+            f"**{row['timing_verdict']}** | {row['download_col']} | {row['file_col']} |"
         )
 
 

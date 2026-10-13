@@ -1,17 +1,27 @@
 """
 Capture the MP3 each holdout row's Streamlit download button actually hands over.
 
-For every row in holdout_results.json:
-  - Open http://localhost:8501/?run=<run_id>
-  - If the download button is present: click it, save Playwright's download event file
-  - If locked: assert the button is absent, set audio_file to null
+Usage:
+  python capture_holdout_downloads.py
+  python capture_holdout_downloads.py --app-url http://localhost:8501
+  python capture_holdout_downloads.py --app-url https://your-deployed-app.example
 
-These files are real browser downloads — not delivery.get_download_bytes reconstructions.
+Or set APP_URL / HOLDOUT_APP_URL in the environment — same flag, no code change.
+
+Flow per row:
+  1. Open {app_url}/?run={run_id}
+  2. Click ■ DOWNLOAD AUDIO (.MP3) when present
+  3. Save Playwright's download event as downloads/{run_id}.mp3
+  4. Only then measure that file with Mutagen
+
+Locked rows (no button) get browser_download_path=null.
 """
 from __future__ import annotations
 
+import argparse
 import json
 import os
+import shutil
 import time
 from pathlib import Path
 
@@ -21,22 +31,38 @@ from playwright.sync_api import sync_playwright
 
 BASE_DIR = Path(__file__).resolve().parent
 RESULTS_JSON = BASE_DIR / "holdout_results.json"
-AUDIO_DIR = BASE_DIR / "holdout_audio"
-APP_URL = "http://localhost:8501"
+DOWNLOADS_DIR = BASE_DIR / "downloads"
+DEFAULT_APP_URL = "http://localhost:8501"
 CHROME_PATH = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
 DOWNLOAD_BUTTON = "■ DOWNLOAD AUDIO (.MP3)"
 LOCK_TEXT = "DOWNLOAD LOCKED"
 
 
-def capture_all():
+def resolve_app_url(cli_url: str | None) -> str:
+    url = (
+        cli_url
+        or os.environ.get("HOLDOUT_APP_URL")
+        or os.environ.get("APP_URL")
+        or DEFAULT_APP_URL
+    ).rstrip("/")
+    return url
+
+
+def capture_all(app_url: str):
     if not RESULTS_JSON.exists():
         raise SystemExit(f"Missing {RESULTS_JSON}")
 
     with open(RESULTS_JSON, "r", encoding="utf-8") as f:
         results = json.load(f)
 
-    AUDIO_DIR.mkdir(exist_ok=True)
+    # Fresh downloads tree for this capture run
+    if DOWNLOADS_DIR.exists():
+        shutil.rmtree(DOWNLOADS_DIR)
+    DOWNLOADS_DIR.mkdir(parents=True)
+
     updated = []
+    print(f"App URL: {app_url}")
+    print(f"Download root: {DOWNLOADS_DIR}")
 
     with sync_playwright() as p:
         browser = p.chromium.launch(
@@ -52,13 +78,11 @@ def capture_all():
 
         for r in results:
             run_id = r["run_id"]
-            slide_id = r["slide_id"]
-            dest = AUDIO_DIR / f"{run_id}_{slide_id}.mp3"
-            url = f"{APP_URL}/?run={run_id}"
+            dest = DOWNLOADS_DIR / f"{run_id}.mp3"
+            url = f"{app_url}/?run={run_id}"
 
             print(f"\n[{run_id}] Opening {url}")
             page.goto(url, wait_until="networkidle", timeout=60000)
-            # Streamlit needs a beat to render the gated download / lock panel
             page.wait_for_timeout(4000)
 
             btn = page.get_by_role("button", name=DOWNLOAD_BUTTON)
@@ -71,27 +95,30 @@ def capture_all():
             except PlaywrightTimeout:
                 button_visible = False
 
+            r["app_url"] = app_url
+
             if button_visible:
-                print(f"[{run_id}] Download button visible — clicking for browser download")
+                print(f"[{run_id}] Download button visible — clicking")
                 with page.expect_download(timeout=30000) as dl_info:
                     btn.click()
                 download = dl_info.value
-                # Playwright gives the file the browser actually received
+                suggested = download.suggested_filename or f"{run_id}.mp3"
                 download.save_as(str(dest))
-                suggested = download.suggested_filename
+
+                # Mutagen opens the browser-saved file only — never holdout_audio
                 mutagen_len = round(MP3(str(dest)).info.length, 1)
                 target = float(r["target_seconds"])
+                rel = str(dest.relative_to(BASE_DIR)).replace("\\", "/")
+
+                # Re-measure from the clicked file; keep audio_file as the app's
+                # source asset so the UI can still serve the button on later visits.
                 r["measured_seconds"] = mutagen_len
                 r["gap"] = round(mutagen_len - target, 1)
-                r["audio_file"] = str(dest.relative_to(BASE_DIR))
-                r["download_source"] = "browser click of st.download_button"
+                r["browser_download_path"] = rel
                 r["browser_download_filename"] = suggested
-                print(
-                    f"[{run_id}] Saved browser download -> {dest} "
-                    f"({mutagen_len:.1f}s, suggested={suggested})"
-                )
+                r["download_source"] = "browser click of st.download_button"
+                print(f"[{run_id}] Browser download saved -> {rel} ({mutagen_len:.1f}s)")
             else:
-                # Confirm lock UI is showing for fail cases
                 lock_visible = False
                 try:
                     locked.first.wait_for(state="visible", timeout=5000)
@@ -101,12 +128,14 @@ def capture_all():
 
                 if dest.exists():
                     dest.unlink()
-                r["audio_file"] = None
+
+                r["browser_download_path"] = None
                 r["download_source"] = "browser: download button absent (locked)"
                 r.pop("browser_download_filename", None)
+                # Do not clear audio_file — the app needs it to offer the button.
                 print(
                     f"[{run_id}] No download button "
-                    f"(lock_banner={lock_visible}) — audio_file=null"
+                    f"(lock_banner={lock_visible}) — browser_download_path=null"
                 )
 
             updated.append(r)
@@ -117,10 +146,19 @@ def capture_all():
     with open(RESULTS_JSON, "w", encoding="utf-8") as f:
         json.dump(updated, f, indent=2)
 
-    print(f"\nUpdated {RESULTS_JSON} with browser-download paths.")
-    unlocked = sum(1 for r in updated if r.get("audio_file"))
-    print(f"Unlocked browser downloads: {unlocked}/{len(updated)}")
+    unlocked = sum(1 for row in updated if row.get("browser_download_path"))
+    print(f"\nUpdated {RESULTS_JSON}")
+    print(f"Browser downloads as downloads/<run_id>.mp3: {unlocked}/{len(updated)}")
 
 
 if __name__ == "__main__":
-    capture_all()
+    parser = argparse.ArgumentParser(
+        description="Click the Streamlit download button for each holdout row."
+    )
+    parser.add_argument(
+        "--app-url",
+        default=None,
+        help="Streamlit base URL (default: HOLDOUT_APP_URL / APP_URL / http://localhost:8501)",
+    )
+    args = parser.parse_args()
+    capture_all(resolve_app_url(args.app_url))

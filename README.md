@@ -957,20 +957,30 @@ To demonstrate that the calibrated pipeline holds up on slides it has never seen
 
 ### 2. Holdout Experiment Results Table (6 Runs: 3 Slides at 2 Lengths Each)
 
-Six experimental runs were executed across the holdout deck (`slide_11`, `slide_14`, `slide_15`), evaluating every slide across two distinct presentation target lengths (20.0s and 30.0s). `slide_14` replaced `slide_12` after both `slide_12` lengths failed key-point coverage (the scripts never stated the climb as an explicit 40% rate).
+→ **[Jump to results table](#holdout-results-table)** · measured by [verify_holdout_runs.py](verify_holdout_runs.py) from [downloads/](downloads/) · captured by [capture_holdout_downloads.py](capture_holdout_downloads.py)
 
-The table below reports **MP3 files a real browser received after clicking `■ DOWNLOAD AUDIO (.MP3)` in the live Streamlit app**. [capture_holdout_downloads.py](capture_holdout_downloads.py) opens each `/?run=run_hXX` row, clicks the download button (or confirms it is hidden when locked), and saves Playwright's download event into `holdout_audio/`. [verify_holdout_runs.py](verify_holdout_runs.py) measures only files whose `download_source` is `browser click of st.download_button`. Locked runs have `audio_file: null` — nothing for a presenter to download.
+Six runs across three holdout slides (`slide_11`, `slide_14`, `slide_15`) at two target lengths (20.0s and 30.0s). `slide_14` replaced `slide_12` after both `slide_12` lengths failed key-point coverage.
 
-| Run ID | Slide ID | Slide Title | Target Length | Measured Download Length | Gap | Retries | Key Visual Point (Ground Truth) | Coverage Verdict | Timing Verdict | Gated Download |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **`run_h01`** | `slide_11` | Paid seats by plan | 30.0s | None (no download) | +7.2s (diagnostic) | 4 | *The new Teams plan grew from zero to 15,000 seats in two months, passing Enterprise* | **N/A** (delivery locked) | **FAIL (retry limit reached)** | ⛔ **Locked (Hidden)** |
-| **`run_h02`** | `slide_14` | Where Lena's new customers come from | 20.0s | 17.1s | -2.9s | 0 | *Almost half of new customers found the bakery through Instagram posts* | **YES** (Covered) | **PASS** | ⬇️ **Unlocked (Downloaded)** |
-| **`run_h03`** | `slide_15` | Monthly sales since September | 20.0s | 18.8s | -1.2s | 0 | *Sales jumped about 50% when the catering menu launched in December and stayed at that higher level* | **YES** (Covered) | **PASS** | ⬇️ **Unlocked (Downloaded)** |
-| **`run_h04`** | `slide_11` | Paid seats by plan | 20.0s | 19.8s | -0.2s | 0 | *The new Teams plan grew from zero to 15,000 seats in two months, passing Enterprise* | **YES** (Covered) | **PASS** | ⬇️ **Unlocked (Downloaded)** |
-| **`run_h05`** | `slide_14` | Where Lena's new customers come from | 30.0s | 27.9s | -2.1s | 0 | *Almost half of new customers found the bakery through Instagram posts* | **YES** (Covered) | **PASS** | ⬇️ **Unlocked (Downloaded)** |
-| **`run_h06`** | `slide_15` | Monthly sales since September | 30.0s | 29.2s | -0.8s | 0 | *Sales jumped about 50% when the catering menu launched in December and stayed at that higher level* | **YES** (Covered) | **PASS** | ⬇️ **Unlocked (Downloaded)** |
+Every measured length below comes from an **actual downloaded MP3**: Playwright clicked `■ DOWNLOAD AUDIO (.MP3)` in the live app and saved the browser download as `downloads/<run_id>.mp3`. [verify_holdout_runs.py](verify_holdout_runs.py) opens that path with Mutagen — `holdout_audio/` never counts. Locked runs have no file (download button was hidden).
 
-Fully passing slides (timing PASS + coverage YES + download unlocked) at both lengths: **`slide_14`**, **`slide_15`**. Fully passing at one length: **`slide_11`** (`run_h04` @ 20.0s). `run_h01` remains the intentional locked fail case.
+```bash
+python capture_holdout_downloads.py --app-url http://localhost:8501
+python capture_holdout_downloads.py --app-url https://your-deployed-app.example
+python verify_holdout_runs.py
+```
+
+<a id="holdout-results-table"></a>
+
+| Run ID | Slide ID | Target | Re-measured length | Gap | Retries | Key-point verdict | Mutagen file |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **`run_h01`** | `slide_11` | 30.0s | None (no download) | +7.2s (diagnostic) | 4 | **N/A** (download locked) | - |
+| **`run_h02`** | `slide_14` | 20.0s | 17.1s | -2.9s | 0 | **YES** | [`downloads/run_h02.mp3`](downloads/run_h02.mp3) |
+| **`run_h03`** | `slide_15` | 20.0s | 18.8s | -1.2s | 0 | **YES** | [`downloads/run_h03.mp3`](downloads/run_h03.mp3) |
+| **`run_h04`** | `slide_11` | 20.0s | 19.8s | -0.2s | 0 | **YES** | [`downloads/run_h04.mp3`](downloads/run_h04.mp3) |
+| **`run_h05`** | `slide_14` | 30.0s | 27.9s | -2.1s | 0 | **YES** | [`downloads/run_h05.mp3`](downloads/run_h05.mp3) |
+| **`run_h06`** | `slide_15` | 30.0s | 29.2s | -0.8s | 0 | **YES** | [`downloads/run_h06.mp3`](downloads/run_h06.mp3) |
+
+Fully passing slides (timing + key-point + button unlock) at both lengths: **`slide_14`**, **`slide_15`**. Fully passing at one length: **`slide_11`** (`run_h04` @ 20.0s). `run_h01` is the intentional locked fail.
 
 ### 3. Key Visual Point Coverage & Semantic Verification
 
@@ -999,10 +1009,14 @@ Coverage verdicts are derived from script text via [verify_holdout_runs.py](veri
 
 ### 4. UI Evidence Screenshots
 
-#### A. Passing Run (Download Button Visible & Unlocked)
-*Run `run_h04` on `slide_11` at 20.0s target: Mutagen duration 19.8s (`gap = -0.2s`), timing gate passed, download button unlocked.*
+After every run the page shows the script, target, Mutagen length (1 decimal), gap, and retries. The download button appears only when `abs(gap) <= 3.0s`; otherwise a clear failure message replaces it.
+
+#### A. Passing Run — [download button visible](screenshots/app_pass_download.png)
+*Run `run_h04` on `slide_11` at 20.0s: measured 19.8s (`gap = -0.2s`), download unlocked.*
+
 ![Passing Run Download Button Visible](screenshots/app_pass_download.png)
 
-#### B. Failed Run (Download Button Hidden & Suppressed)
-*Run `run_h01` on `slide_11` at 30.0s target: Diagnostic draft 37.2s (`gap = +7.2s`), retry limit reached (4 retries exhausted), timing gate failed, download button suppressed with clear policy failure alert and no file shipped.*
+#### B. Failed Run — [download button hidden](screenshots/app_fail_download_hidden.png)
+*Run `run_h01` on `slide_11` at 30.0s: diagnostic 37.2s (`gap = +7.2s`), 4 retries exhausted, download locked with failure message.*
+
 ![Failing Run Download Button Hidden](screenshots/app_fail_download_hidden.png)
