@@ -11,13 +11,13 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # Page Configuration
 st.set_page_config(
-    page_title="Baby Adult · Narration Agency",
-    page_icon="♥",
+    page_title="Canva Presentations · Slide Narration Studio",
+    page_icon="■",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
-# Neo-Brutalist Pixel-Grid Aesthetic (Baby Adult Protection Agency)
+# Neo-Brutalist Pixel-Grid Aesthetic (Canva Presentations / Slide Narration Studio)
 st.markdown("""
 <style>
     /* Reset & Clean Streamlit */
@@ -334,24 +334,22 @@ st.markdown("""
 st.markdown("""
 <div class="top-nav">
     <div class="brand-wrap">
-        <svg width="26" height="22" viewBox="0 0 14 12" fill="#161616" style="shape-rendering: crispEdges;">
-            <rect x="2" y="0" width="3" height="2"/>
-            <rect x="9" y="0" width="3" height="2"/>
-            <rect x="1" y="2" width="5" height="2"/>
-            <rect x="8" y="2" width="5" height="2"/>
-            <rect x="0" y="4" width="14" height="2"/>
-            <rect x="1" y="6" width="12" height="2"/>
-            <rect x="3" y="8" width="8" height="2"/>
-            <rect x="5" y="10" width="4" height="2"/>
+        <svg width="28" height="20" viewBox="0 0 16 12" fill="#161616" style="shape-rendering: crispEdges;">
+            <rect x="0" y="4" width="2" height="4"/>
+            <rect x="3" y="2" width="2" height="8"/>
+            <rect x="6" y="0" width="2" height="12"/>
+            <rect x="9" y="3" width="2" height="6"/>
+            <rect x="12" y="1" width="2" height="10"/>
+            <rect x="15" y="5" width="2" height="2"/>
         </svg>
         <div class="brand-text">
-            Baby Adult<br>Protection Agency
+            CANVA PRESENTATIONS<br>SLIDE NARRATION STUDIO
         </div>
     </div>
     <div class="nav-menu">
-        <span>Services</span>
-        <span>About</span>
-        <span>Contact</span>
+        <span>Specification</span>
+        <span>Holdout Benchmarks</span>
+        <span>Calibration (2.73 WPS)</span>
     </div>
 </div>
 """, unsafe_allow_html=True)
@@ -360,10 +358,10 @@ st.markdown("""
 st.markdown("""
 <div class="hero-wrap">
     <div>
-        <h1 class="hero-big">Adulthood<br>is hard.</h1>
+        <h1 class="hero-big">Narration<br>is hard.</h1>
     </div>
     <div class="hero-blurb">
-        Helping newbie presentations (thirties or fifties... who cares) figure out how to navigate narration and do a tiny bit better. Calibrated rate <strong>2.73 wps</strong> via JennyNeural.
+        Automated slide speech synthesis calibrated to <strong>2.73 wps</strong> via EdgeTTS JennyNeural. Audio download unlocks strictly when mutagen-measured duration lands within <strong>±3.0s</strong> of the target window.
     </div>
 </div>
 """, unsafe_allow_html=True)
@@ -378,7 +376,7 @@ st.markdown("""
         <span>1</span> <span>1</span> <span class="pixel-sq-black"></span>
         <span>2</span> <span>1</span> <span>1</span>
     </div>
-    <div>[GRID: 128.4 // CALIBRATION 2.73 WPS // MUTAGEN VERIFIED]</div>
+    <div>[CANVA PIPELINE v2.4 // CALIBRATION 2.73 WPS // TOLERANCE ±3.0S // MUTAGEN VERIFIED]</div>
 </div>
 """, unsafe_allow_html=True)
 
